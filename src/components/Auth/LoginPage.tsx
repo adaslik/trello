@@ -6,7 +6,7 @@ import toast from 'react-hot-toast'
 
 export default function LoginPage() {
   const supabase = createBrowserClient()
-  const [mode, setMode] = useState<'signin' | 'signup'>('signin')
+  const [mode, setMode] = useState<'signin' | 'signup' | 'forgot'>('signin')
   const [email, setEmail] = useState('')
   const [password, setPassword] = useState('')
   const [fullName, setFullName] = useState('')
@@ -27,6 +27,17 @@ export default function LoginPage() {
       const { error } = await supabase.auth.signInWithPassword({ email, password })
       if (error) toast.error('E-posta veya şifre hatalı')
     }
+    setLoading(false)
+  }
+
+  const handleForgotPassword = async (e: React.FormEvent) => {
+    e.preventDefault()
+    setLoading(true)
+    const { error } = await supabase.auth.resetPasswordForEmail(email, {
+      redirectTo: `${window.location.origin}/auth/reset`,
+    })
+    if (error) toast.error(error.message)
+    else toast.success('Şifre sıfırlama bağlantısı e-postanıza gönderildi')
     setLoading(false)
   }
 
@@ -58,20 +69,51 @@ export default function LoginPage() {
 
         <div className="p-8">
           {/* Mode tabs */}
-          <div className="flex bg-slate-100 rounded-lg p-1 mb-6">
-            {(['signin', 'signup'] as const).map(m => (
-              <button
-                key={m}
-                onClick={() => setMode(m)}
-                className={`flex-1 py-1.5 text-sm rounded-md font-medium transition-colors ${
-                  mode === m ? 'bg-white text-slate-800 shadow-sm' : 'text-slate-500'
-                }`}
-              >
-                {m === 'signin' ? 'Giriş Yap' : 'Kayıt Ol'}
-              </button>
-            ))}
-          </div>
+          {mode !== 'forgot' && (
+            <div className="flex bg-slate-100 rounded-lg p-1 mb-6">
+              {(['signin', 'signup'] as const).map(m => (
+                <button
+                  key={m}
+                  onClick={() => setMode(m)}
+                  className={`flex-1 py-1.5 text-sm rounded-md font-medium transition-colors ${
+                    mode === m ? 'bg-white text-slate-800 shadow-sm' : 'text-slate-500'
+                  }`}
+                >
+                  {m === 'signin' ? 'Giriş Yap' : 'Kayıt Ol'}
+                </button>
+              ))}
+            </div>
+          )}
 
+          {mode === 'forgot' && (
+            <form onSubmit={handleForgotPassword} className="space-y-4">
+              <p className="text-sm text-slate-500 mb-4">
+                E-posta adresinizi girin, şifre sıfırlama bağlantısı gönderelim.
+              </p>
+              <div>
+                <label className="block text-xs font-medium text-slate-600 mb-1">E-posta</label>
+                <input
+                  type="email" value={email} onChange={e => setEmail(e.target.value)}
+                  required className="w-full px-3 py-2 text-sm border border-slate-200 rounded-lg focus:outline-none focus:border-indigo-400"
+                  placeholder="ornek@meslekodam.org"
+                />
+              </div>
+              <button
+                type="submit" disabled={loading}
+                className="w-full py-2.5 bg-indigo-600 text-white text-sm font-medium rounded-lg hover:bg-indigo-700 disabled:opacity-50 transition-colors"
+              >
+                {loading ? 'Lütfen bekleyin...' : 'Sıfırlama Bağlantısı Gönder'}
+              </button>
+              <button
+                type="button" onClick={() => setMode('signin')}
+                className="w-full py-2 text-sm text-slate-500 hover:text-slate-700 transition-colors"
+              >
+                Giriş ekranına dön
+              </button>
+            </form>
+          )}
+
+          {mode !== 'forgot' && (<>
           <form onSubmit={handleSubmit} className="space-y-4">
             {mode === 'signup' && (
               <div>
@@ -92,7 +134,18 @@ export default function LoginPage() {
               />
             </div>
             <div>
-              <label className="block text-xs font-medium text-slate-600 mb-1">Şifre</label>
+              <div className="flex items-center justify-between mb-1">
+                <label className="block text-xs font-medium text-slate-600">Şifre</label>
+                {mode === 'signin' && (
+                  <button
+                    type="button"
+                    onClick={() => setMode('forgot')}
+                    className="text-xs text-indigo-600 hover:text-indigo-800 transition-colors"
+                  >
+                    Şifremi unuttum
+                  </button>
+                )}
+              </div>
               <input
                 type="password" value={password} onChange={e => setPassword(e.target.value)}
                 required minLength={6}
@@ -139,6 +192,7 @@ export default function LoginPage() {
             </svg>
             GitHub ile Giriş Yap
           </button>
+          </>)}
         </div>
       </div>
     </div>
