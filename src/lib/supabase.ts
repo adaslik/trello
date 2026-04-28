@@ -1,16 +1,5 @@
-import { createClient } from '@supabase/supabase-js'
-import { createClientComponentClient, createServerComponentClient } from '@supabase/auth-helpers-nextjs'
-import { cookies } from 'next/headers'
+import { createClientComponentClient } from '@supabase/auth-helpers-nextjs'
 
-const supabaseUrl = process.env.NEXT_PUBLIC_SUPABASE_URL!
-const supabaseAnonKey = process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY!
-
-// Client-side Supabase client
-export const supabase = createClient(supabaseUrl, supabaseAnonKey)
-
-// For client components
+// For client components — auth-helpers reads env vars lazily,
+// so this file is safe to import during prerender even if env is missing.
 export const createBrowserClient = () => createClientComponentClient()
-
-// For server components
-export const createServerClient = () =>
-  createServerComponentClient({ cookies })

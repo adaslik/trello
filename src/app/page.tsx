@@ -2,7 +2,7 @@
 
 import { useAuth } from '@/hooks/useAuth'
 import LoginPage from '@/components/Auth/LoginPage'
-import Dashboard from '@/pages/Dashboard'
+import Dashboard from '@/views/Dashboard'
 
 export default function Home() {
   const { user, loading } = useAuth()
