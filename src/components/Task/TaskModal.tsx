@@ -1,11 +1,13 @@
 'use client'
 
-import { useState, useEffect, useRef } from 'react'
-import { X, Trash2, Plus, ExternalLink, Send, RefreshCw } from 'lucide-react'
+import { useState, useRef } from 'react'
+import { X, Trash2, Plus, ExternalLink, Send, RefreshCw, ImageIcon } from 'lucide-react'
+import toast from 'react-hot-toast'
 import type { Task, Label, Profile } from '@/types'
 import { STATUS_LABELS, PRIORITY_LABELS, PRIORITY_COLORS, COVER_PATTERNS, lightenColor } from '@/lib/constants'
 import { useAuth } from '@/hooks/useAuth'
 import { formatDate } from '@/lib/constants'
+import { createBrowserClient } from '@/lib/supabase'
 
 interface TaskModalProps {
   task: Task | null
@@ -24,6 +26,8 @@ export default function TaskModal({
 }: TaskModalProps) {
   const { profile } = useAuth()
   const commentRef = useRef<HTMLInputElement>(null)
+  const fileInputRef = useRef<HTMLInputElement>(null)
+  const supabase = createBrowserClient()
 
   const [title, setTitle] = useState(task?.title || '')
   const [desc, setDesc] = useState(task?.description || '')
@@ -37,6 +41,8 @@ export default function TaskModal({
   const [driveLinks, setDriveLinks] = useState(task?.drive_links || [])
   const [comments, setComments] = useState(task?.comments || [])
   const [coverPattern, setCoverPattern] = useState(task?.cover_pattern ?? Math.floor(Math.random() * 4))
+  const [coverImageUrl, setCoverImageUrl] = useState<string | null>(task?.cover_image_url ?? null)
+  const [uploadingCover, setUploadingCover] = useState(false)
   const [driveUrl, setDriveUrl] = useState('')
   const [driveName, setDriveName] = useState('')
   const [saving, setSaving] = useState(false)
@@ -44,6 +50,30 @@ export default function TaskModal({
 
   const bg = lightenColor(wsColor)
   const coverSvg = COVER_PATTERNS[coverPattern % COVER_PATTERNS.length](bg, wsColor)
+
+  const handleCoverImageSelect = async (e: React.ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0]
+    if (!file) return
+    setUploadingCover(true)
+    const ext = file.name.split('.').pop()?.toLowerCase() || 'jpg'
+    const path = `cover-${Date.now()}.${ext}`
+    const { data, error } = await supabase.storage
+      .from('task-covers')
+      .upload(path, file, { cacheControl: '3600', upsert: false })
+    if (!error && data) {
+      const { data: { publicUrl } } = supabase.storage.from('task-covers').getPublicUrl(data.path)
+      setCoverImageUrl(publicUrl)
+    } else if (error) {
+      if (error.message.includes('Bucket not found')) {
+        toast.error('Supabase\'de "task-covers" bucket\'ı oluşturulmalı. Storage > New bucket > "task-covers" (Public)')
+      } else {
+        toast.error('Resim yüklenemedi: ' + error.message)
+      }
+    }
+    setUploadingCover(false)
+    // reset input so same file can be picked again
+    if (fileInputRef.current) fileInputRef.current.value = ''
+  }
 
   const toggleLabel = (id: number) => {
     setSelectedLabels(prev =>
@@ -98,6 +128,7 @@ export default function TaskModal({
       drive_links: driveLinks,
       comments,
       cover_pattern: coverPattern,
+      cover_image_url: coverImageUrl ?? null,
     })
     setSaving(false)
     onClose()
@@ -117,14 +148,40 @@ export default function TaskModal({
 
         {/* Cover */}
         <div className="relative flex-shrink-0">
-          <div dangerouslySetInnerHTML={{ __html: coverSvg }} />
+          {coverImageUrl ? (
+            <img
+              src={coverImageUrl}
+              alt="Kapak resmi"
+              className="w-full object-cover"
+              style={{ height: 120 }}
+            />
+          ) : (
+            <div dangerouslySetInnerHTML={{ __html: coverSvg }} />
+          )}
           <div className="absolute top-3 right-3 flex gap-2">
             <button
-              onClick={() => setCoverPattern(p => (p + 1) % 4)}
-              className="bg-white/80 backdrop-blur-sm text-slate-700 text-xs px-3 py-1.5 rounded-lg flex items-center gap-1 hover:bg-white"
+              onClick={() => fileInputRef.current?.click()}
+              disabled={uploadingCover}
+              className="bg-white/80 backdrop-blur-sm text-slate-700 text-xs px-3 py-1.5 rounded-lg flex items-center gap-1 hover:bg-white disabled:opacity-60"
             >
-              <RefreshCw size={11} /> Kapak
+              <ImageIcon size={11} />
+              {uploadingCover ? 'Yükleniyor...' : coverImageUrl ? 'Resmi Değiştir' : 'Resim Ekle'}
             </button>
+            {coverImageUrl ? (
+              <button
+                onClick={() => setCoverImageUrl(null)}
+                className="bg-white/80 backdrop-blur-sm text-red-500 text-xs px-3 py-1.5 rounded-lg flex items-center gap-1 hover:bg-white"
+              >
+                <X size={11} /> Resmi Kaldır
+              </button>
+            ) : (
+              <button
+                onClick={() => setCoverPattern(p => (p + 1) % 4)}
+                className="bg-white/80 backdrop-blur-sm text-slate-700 text-xs px-3 py-1.5 rounded-lg flex items-center gap-1 hover:bg-white"
+              >
+                <RefreshCw size={11} /> Desen
+              </button>
+            )}
             <button
               onClick={onClose}
               className="bg-white/80 backdrop-blur-sm text-slate-700 p-1.5 rounded-lg hover:bg-white"
@@ -132,6 +189,13 @@ export default function TaskModal({
               <X size={14} />
             </button>
           </div>
+          <input
+            ref={fileInputRef}
+            type="file"
+            accept="image/*"
+            className="hidden"
+            onChange={handleCoverImageSelect}
+          />
         </div>
 
         {/* Body */}
@@ -273,11 +337,14 @@ export default function TaskModal({
               <p className="text-[9px] font-bold text-slate-400 tracking-widest mb-1.5">DURUM</p>
               <select
                 className="w-full text-xs px-2 py-2 border border-slate-200 rounded-lg bg-white"
-                value={status} onChange={e => setStatus(e.target.value as Task['status'])}
+                value={status} onChange={e => setStatus(e.target.value)}
               >
                 {Object.entries(STATUS_LABELS).map(([v, l]) => (
                   <option key={v} value={v}>{l}</option>
                 ))}
+                {!Object.keys(STATUS_LABELS).includes(status) && (
+                  <option value={status}>{status}</option>
+                )}
               </select>
             </div>
             <div>

@@ -208,6 +208,7 @@ export default function Dashboard() {
         <div className="flex-1 overflow-auto p-5">
           {view === 'kanban' && activeWsId && (
             <KanbanBoard
+              wsId={activeWsId}
               tasks={tasks}
               labels={wsLabels}
               wsColor={activeWs?.color || '#534AB7'}

@@ -36,7 +36,7 @@ export interface Label {
   position: number
 }
 
-export type TaskStatus = 'bekleyen' | 'devam_ediyor' | 'incelemede' | 'tamamlandi'
+export type TaskStatus = string
 export type Priority = 'dusuk' | 'orta' | 'yuksek' | 'acil'
 
 export interface DriveLink {
@@ -70,6 +70,7 @@ export interface Task {
   drive_links: DriveLink[]
   comments: Comment[]
   cover_pattern: number
+  cover_image_url?: string | null
   position: number
   created_by: string
   created_at: string
