@@ -1,12 +1,13 @@
 'use client'
 
 import { useState, useEffect, useCallback } from 'react'
-import { Bell, Plus, Settings, LayoutGrid, BarChart2, Calendar } from 'lucide-react'
+import { Bell, Plus, Settings, LayoutGrid, BarChart2, Calendar, Home } from 'lucide-react'
 import Sidebar from '@/components/Layout/Sidebar'
 import KanbanBoard from '@/components/Board/KanbanBoard'
 import GanttView from '@/components/Gantt/GanttView'
 import CalendarView from '@/components/Calendar/CalendarView'
 import TaskModal from '@/components/Task/TaskModal'
+import HomeView from '@/components/Home/HomeView'
 import { useAuth } from '@/hooks/useAuth'
 import { useWorkspaces } from '@/hooks/useWorkspaces'
 import { useTasks } from '@/hooks/useTasks'
@@ -15,7 +16,7 @@ import { WORKSPACE_COLORS, CAT_LABELS, canEditWorkspace } from '@/lib/constants'
 import type { Task, Workspace, Profile } from '@/types'
 import toast from 'react-hot-toast'
 
-type View = 'kanban' | 'gantt' | 'takvim'
+type View = 'anasayfa' | 'kanban' | 'gantt' | 'takvim'
 
 export default function Dashboard() {
   const { profile } = useAuth()
@@ -23,7 +24,7 @@ export default function Dashboard() {
   const { workspaces, labels, createWorkspace, updateWorkspace, deleteWorkspace, fetchLabels } = useWorkspaces()
   const [activeWsId, setActiveWsId] = useState<string | null>(null)
   const { tasks, createTask, updateTask, deleteTask, moveTask } = useTasks(activeWsId)
-  const [view, setView] = useState<View>('kanban')
+  const [view, setView] = useState<View>('anasayfa')
   const [taskModalOpen, setTaskModalOpen] = useState(false)
   const [editingTask, setEditingTask] = useState<Task | null>(null)
   const [defaultStatus, setDefaultStatus] = useState<Task['status']>('bekleyen')
@@ -71,6 +72,11 @@ export default function Dashboard() {
   }, [profile])
 
   const selectWs = (id: string) => {
+    setActiveWsId(id)
+    setView('kanban')
+  }
+
+  const selectWsFromHome = (id: string) => {
     setActiveWsId(id)
     setView('kanban')
   }
@@ -156,14 +162,30 @@ export default function Dashboard() {
         {/* Topbar */}
         <div className="bg-white border-b border-slate-200 px-6 py-3 flex items-center justify-between flex-shrink-0">
           <div className="flex items-center gap-3">
-            <div className="w-3 h-3 rounded-sm" style={{ background: activeWs?.color || '#888' }} />
-            <h1 className="text-sm font-semibold text-slate-800">{activeWs?.name || 'Çalışma Alanı'}</h1>
-            <span className={`text-[10px] px-2 py-0.5 rounded-full ${canEdit ? 'bg-green-100 text-green-700' : 'bg-amber-100 text-amber-700'}`}>
-              {canEdit ? 'Düzenleyebilirsin' : 'Görüntüle'}
-            </span>
+            {view === 'anasayfa' ? (
+              <h1 className="text-sm font-semibold text-slate-800">Ana Sayfa</h1>
+            ) : (
+              <>
+                <div className="w-3 h-3 rounded-sm" style={{ background: activeWs?.color || '#888' }} />
+                <h1 className="text-sm font-semibold text-slate-800">{activeWs?.name || 'Çalışma Alanı'}</h1>
+                <span className={`text-[10px] px-2 py-0.5 rounded-full ${canEdit ? 'bg-green-100 text-green-700' : 'bg-amber-100 text-amber-700'}`}>
+                  {canEdit ? 'Düzenleyebilirsin' : 'Görüntüle'}
+                </span>
+              </>
+            )}
           </div>
 
           <div className="flex items-center gap-2">
+            {/* Home button */}
+            <button
+              onClick={() => setView('anasayfa')}
+              className={`flex items-center gap-1.5 px-3 py-1.5 text-[11px] rounded-lg font-medium transition-colors ${
+                view === 'anasayfa' ? 'bg-indigo-600 text-white' : 'bg-slate-100 text-slate-500 hover:text-slate-700'
+              }`}
+            >
+              <Home size={12} /> Ana Sayfa
+            </button>
+
             {/* View switcher */}
             <div className="flex bg-slate-100 rounded-lg p-0.5">
               {([
@@ -173,7 +195,7 @@ export default function Dashboard() {
               ] as const).map(({ v, icon: Icon, label }) => (
                 <button
                   key={v}
-                  onClick={() => setView(v)}
+                  onClick={() => { if (!activeWsId && workspaces.length) setActiveWsId(workspaces[0].id); setView(v) }}
                   className={`flex items-center gap-1.5 px-3 py-1.5 text-[11px] rounded-md font-medium transition-colors ${
                     view === v ? 'bg-white text-slate-800 shadow-sm' : 'text-slate-500 hover:text-slate-700'
                   }`}
@@ -183,7 +205,7 @@ export default function Dashboard() {
               ))}
             </div>
 
-            {canEdit && (
+            {canEdit && view !== 'anasayfa' && (
               <button
                 onClick={() => openTaskModal(null)}
                 className="flex items-center gap-1.5 px-3 py-1.5 bg-indigo-600 text-white text-xs font-medium rounded-lg hover:bg-indigo-700"
@@ -206,6 +228,14 @@ export default function Dashboard() {
 
         {/* Content */}
         <div className="flex-1 overflow-auto p-5">
+          {view === 'anasayfa' && profile && (
+            <HomeView
+              workspaces={workspaces}
+              profile={profile}
+              notifications={notifications}
+              onSelectWs={selectWsFromHome}
+            />
+          )}
           {view === 'kanban' && activeWsId && (
             <KanbanBoard
               wsId={activeWsId}
