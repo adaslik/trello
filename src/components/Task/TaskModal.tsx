@@ -128,7 +128,7 @@ export default function TaskModal({
       drive_links: driveLinks,
       comments,
       cover_pattern: coverPattern,
-      cover_image_url: coverImageUrl ?? null,
+      ...(coverImageUrl ? { cover_image_url: coverImageUrl } : {}),
     })
     setSaving(false)
     onClose()
