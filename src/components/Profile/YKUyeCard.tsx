@@ -1,9 +1,9 @@
 'use client'
 
-import { useState } from 'react'
+import { useState, useRef } from 'react'
 import { 
   Phone, Mail, Globe, Edit2, Save, X, 
-  Twitter, Linkedin, Instagram, Facebook 
+  Twitter, Linkedin, Instagram, Facebook, Camera, Upload
 } from 'lucide-react'
 import { useAuth } from '@/hooks/useAuth'
 import { createBrowserClient } from '@/lib/supabase'
@@ -19,6 +19,8 @@ export default function YKUyeCard({ editable = true }: YKUyeCardProps) {
   const supabase = createBrowserClient()
   const [editing, setEditing] = useState(false)
   const [saving, setSaving] = useState(false)
+  const [uploading, setUploading] = useState(false)
+  const fileInputRef = useRef<HTMLInputElement>(null)
   
   const [formData, setFormData] = useState({
     sicil_no: profile?.sicil_no || '',
@@ -66,6 +68,57 @@ export default function YKUyeCard({ editable = true }: YKUyeCardProps) {
       toast.error('Güncelleme başarısız')
     } finally {
       setSaving(false)
+    }
+  }
+
+  const handleAvatarUpload = async (e: React.ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0]
+    if (!file) return
+
+    // Validate file type
+    if (!file.type.startsWith('image/')) {
+      toast.error('Lütfen bir resim dosyası seçin')
+      return
+    }
+
+    // Validate file size (max 2MB)
+    if (file.size > 2 * 1024 * 1024) {
+      toast.error('Dosya boyutu max 2MB olmalı')
+      return
+    }
+
+    setUploading(true)
+    try {
+      const fileExt = file.name.split('.').pop()
+      const fileName = `${profile.id}-${Date.now()}.${fileExt}`
+      const filePath = `avatars/${fileName}`
+
+      // Upload to Supabase Storage
+      const { error: uploadError } = await supabase.storage
+        .from('avatars')
+        .upload(filePath, file, { upsert: true })
+
+      if (uploadError) throw uploadError
+
+      // Get public URL
+      const { data: { publicUrl } } = supabase.storage
+        .from('avatars')
+        .getPublicUrl(filePath)
+
+      // Update profile
+      const { error: updateError } = await supabase
+        .from('profiles')
+        .update({ avatar_url: publicUrl })
+        .eq('id', profile.id)
+
+      if (updateError) throw updateError
+
+      toast.success('Profil fotoğrafı güncellendi')
+    } catch (error) {
+      console.error('Avatar upload error:', error)
+      toast.error('Fotoğraf yüklenemedi')
+    } finally {
+      setUploading(false)
     }
   }
 
@@ -242,7 +295,7 @@ export default function YKUyeCard({ editable = true }: YKUyeCardProps) {
     <div className="bg-white rounded-lg shadow-sm border border-gray-200 p-6 mb-6">
       <div className="flex items-start gap-6">
         {/* Avatar */}
-        <div className="flex-shrink-0">
+        <div className="flex-shrink-0 relative group">
           {profile.avatar_url ? (
             <img
               src={profile.avatar_url}
@@ -253,6 +306,29 @@ export default function YKUyeCard({ editable = true }: YKUyeCardProps) {
             <div className="w-24 h-24 rounded-full bg-gradient-to-br from-blue-500 to-purple-600 flex items-center justify-center text-white text-3xl font-bold border-4 border-blue-100">
               {profile.initials}
             </div>
+          )}
+          {editable && (
+            <>
+              <input
+                ref={fileInputRef}
+                type="file"
+                accept="image/*"
+                onChange={handleAvatarUpload}
+                className="hidden"
+              />
+              <button
+                onClick={() => fileInputRef.current?.click()}
+                disabled={uploading}
+                className="absolute bottom-0 right-0 p-2 bg-blue-600 text-white rounded-full shadow-lg hover:bg-blue-700 disabled:opacity-50"
+                title="Fotoğraf yükle"
+              >
+                {uploading ? (
+                  <div className="w-4 h-4 border-2 border-white border-t-transparent rounded-full animate-spin" />
+                ) : (
+                  <Camera size={16} />
+                )}
+              </button>
+            </>
           )}
         </div>
 

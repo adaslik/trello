@@ -1,7 +1,8 @@
 'use client'
 
 import { useState, useEffect, useCallback } from 'react'
-import { Bell, Plus, Settings, LayoutGrid, BarChart2, Calendar, Home } from 'lucide-react'
+import { Bell, Plus, Settings, LayoutGrid, BarChart2, Calendar, Home, Users } from 'lucide-react'
+import { useRouter } from 'next/navigation'
 import Sidebar from '@/components/Layout/Sidebar'
 import KanbanBoard from '@/components/Board/KanbanBoard'
 import GanttView from '@/components/Gantt/GanttView'
@@ -9,6 +10,7 @@ import CalendarView from '@/components/Calendar/CalendarView'
 import TaskModal from '@/components/Task/TaskModal'
 import HomeView from '@/components/Home/HomeView'
 import YKUyeCard from '@/components/Profile/YKUyeCard'
+import JoinRequestCard from '@/components/JoinRequest/JoinRequestCard'
 import { useAuth } from '@/hooks/useAuth'
 import { useWorkspaces } from '@/hooks/useWorkspaces'
 import { useTasks } from '@/hooks/useTasks'
@@ -21,6 +23,7 @@ import toast from 'react-hot-toast'
 type View = 'anasayfa' | 'kanban' | 'gantt' | 'takvim'
 
 export default function Dashboard() {
+  const router = useRouter()
   const { profile } = useAuth()
   const supabase = createBrowserClient()
   const { workspaces, labels, createWorkspace, updateWorkspace, deleteWorkspace, fetchLabels } = useWorkspaces()
@@ -208,6 +211,14 @@ export default function Dashboard() {
               <Home size={12} /> Ana Sayfa
             </button>
 
+            {/* YK Üyeleri button */}
+            <button
+              onClick={() => router.push('/yk-uyeleri')}
+              className="flex items-center gap-1.5 px-3 py-1.5 text-[11px] rounded-lg font-medium bg-slate-100 text-slate-500 hover:text-slate-700 transition-colors"
+            >
+              <Users size={12} /> YK Üyeleri
+            </button>
+
             {/* View switcher */}
             <div className="flex bg-slate-100 rounded-lg p-0.5">
               {([
@@ -253,6 +264,8 @@ export default function Dashboard() {
           {view === 'anasayfa' && profile && (
             <>
               {isYK && <YKUyeCard />}
+              {!isYK && <JoinRequestCard isYK={false} />}
+              {isYK && <JoinRequestCard isYK={true} />}
               <HomeView
                 workspaces={workspaces}
                 profile={profile}
