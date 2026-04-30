@@ -8,9 +8,11 @@ import GanttView from '@/components/Gantt/GanttView'
 import CalendarView from '@/components/Calendar/CalendarView'
 import TaskModal from '@/components/Task/TaskModal'
 import HomeView from '@/components/Home/HomeView'
+import YKUyeCard from '@/components/Profile/YKUyeCard'
 import { useAuth } from '@/hooks/useAuth'
 import { useWorkspaces } from '@/hooks/useWorkspaces'
 import { useTasks } from '@/hooks/useTasks'
+import { useAssignedTasks } from '@/hooks/useAssignedTasks'
 import { createBrowserClient } from '@/lib/supabase'
 import { WORKSPACE_COLORS, CAT_LABELS, canEditWorkspace } from '@/lib/constants'
 import type { Task, Workspace, Profile } from '@/types'
@@ -24,9 +26,11 @@ export default function Dashboard() {
   const { workspaces, labels, createWorkspace, updateWorkspace, deleteWorkspace, fetchLabels } = useWorkspaces()
   const [activeWsId, setActiveWsId] = useState<string | null>(null)
   const { tasks, createTask, updateTask, deleteTask, moveTask } = useTasks(activeWsId)
+  const { tasks: assignedTasks, updateTask: updateAssignedTask } = useAssignedTasks()
   const [view, setView] = useState<View>('anasayfa')
   const [taskModalOpen, setTaskModalOpen] = useState(false)
   const [editingTask, setEditingTask] = useState<Task | null>(null)
+  const [editFromAssigned, setEditFromAssigned] = useState(false)
   const [defaultStatus, setDefaultStatus] = useState<Task['status']>('bekleyen')
   const [members, setMembers] = useState<Profile[]>([])
   const [notifications, setNotifications] = useState<any[]>([])
@@ -82,14 +86,28 @@ export default function Dashboard() {
   }
 
   const openTaskModal = (task: Task | null, status?: Task['status']) => {
+    setEditFromAssigned(false)
     setEditingTask(task)
     setDefaultStatus(status || 'bekleyen')
     setTaskModalOpen(true)
   }
 
+  const openAssignedTask = async (task: Task) => {
+    if (!labels[task.workspace_id]) {
+      await fetchLabels(task.workspace_id)
+    }
+    setEditFromAssigned(true)
+    setEditingTask(task)
+    setTaskModalOpen(true)
+  }
+
   const handleSaveTask = async (data: Partial<Task>) => {
     if (editingTask) {
-      await updateTask(editingTask.id, data)
+      if (editFromAssigned) {
+        await updateAssignedTask(editingTask.id, data)
+      } else {
+        await updateTask(editingTask.id, data)
+      }
       toast.success('Görev güncellendi')
     } else {
       await createTask(data)
@@ -142,6 +160,10 @@ export default function Dashboard() {
     unreadByWs[n.workspace_id] = (unreadByWs[n.workspace_id] || 0) + 1
   })
   const totalUnread = notifications.filter(n => !n.is_read).length
+
+  const modalWsId = editFromAssigned && editingTask ? editingTask.workspace_id : activeWsId
+  const modalWs = workspaces.find(w => w.id === modalWsId)
+  const modalLabels = modalWsId ? (labels[modalWsId] || []) : []
 
   if (!profile) return null
 
@@ -229,12 +251,17 @@ export default function Dashboard() {
         {/* Content */}
         <div className="flex-1 overflow-auto p-5">
           {view === 'anasayfa' && profile && (
-            <HomeView
-              workspaces={workspaces}
-              profile={profile}
-              notifications={notifications}
-              onSelectWs={selectWsFromHome}
-            />
+            <>
+              {isYK && <YKUyeCard />}
+              <HomeView
+                workspaces={workspaces}
+                profile={profile}
+                notifications={notifications}
+                assignedTasks={assignedTasks}
+                onSelectWs={selectWsFromHome}
+                onAssignedTaskClick={openAssignedTask}
+              />
+            </>
           )}
           {view === 'kanban' && activeWsId && (
             <KanbanBoard
@@ -306,13 +333,13 @@ export default function Dashboard() {
       {taskModalOpen && (
         <TaskModal
           task={editingTask}
-          wsColor={activeWs?.color || '#534AB7'}
-          labels={wsLabels}
+          wsColor={modalWs?.color || '#534AB7'}
+          labels={modalLabels}
           members={members}
           defaultStatus={defaultStatus}
-          onClose={() => { setTaskModalOpen(false); setEditingTask(null) }}
+          onClose={() => { setTaskModalOpen(false); setEditingTask(null); setEditFromAssigned(false) }}
           onSave={handleSaveTask}
-          onDelete={editingTask ? handleDeleteTask : undefined}
+          onDelete={editingTask && !editFromAssigned ? handleDeleteTask : undefined}
         />
       )}
 

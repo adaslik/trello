@@ -1,0 +1,14 @@
+{
+  "permissions": {
+    "allow": [
+      "Bash(npm run *)",
+      "Bash(npx next *)",
+      "Bash(npx tsc *)",
+      "Bash(git push *)",
+      "Bash(npx vercel *)",
+      "Bash(git add *)",
+      "Bash(git commit -m 'fix: skip cover_image_url in payload when null \\(column may not exist yet\\) *)",
+      "Bash(git commit -m 'feat: add ERP-style home dashboard with KPIs, task breakdown, deadlines *)"
+    ]
+  }
+}

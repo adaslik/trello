@@ -2,17 +2,19 @@
 
 import { useState, useEffect } from 'react'
 import { createBrowserClient } from '@/lib/supabase'
-import { PRIORITY_COLORS, PRIORITY_LABELS, ROLE_LABELS } from '@/lib/constants'
+import { PRIORITY_COLORS, PRIORITY_LABELS, ROLE_LABELS, formatDate } from '@/lib/constants'
 import type { Workspace, Profile, Task } from '@/types'
 
 interface HomeViewProps {
   workspaces: Workspace[]
   profile: Profile
   notifications: any[]
+  assignedTasks: Task[]
   onSelectWs: (id: string) => void
+  onAssignedTaskClick: (task: Task) => void
 }
 
-export default function HomeView({ workspaces, profile, notifications, onSelectWs }: HomeViewProps) {
+export default function HomeView({ workspaces, profile, notifications, assignedTasks, onSelectWs, onAssignedTaskClick }: HomeViewProps) {
   const supabase = createBrowserClient()
   const [tasks, setTasks] = useState<Task[]>([])
   const [loading, setLoading] = useState(true)
@@ -137,6 +139,81 @@ export default function HomeView({ workspaces, profile, notifications, onSelectW
           </div>
         ))}
       </div>
+
+      {/* ── Bana Atanan Görevler ── */}
+      {(() => {
+        const active = assignedTasks
+          .filter(t => t.status !== 'tamamlandi')
+          .sort((a, b) => {
+            if (!a.end_date && !b.end_date) return 0
+            if (!a.end_date) return 1
+            if (!b.end_date) return -1
+            return new Date(a.end_date).getTime() - new Date(b.end_date).getTime()
+          })
+        return (
+          <div className="bg-white border border-slate-200 rounded-2xl p-5">
+            <div className="flex items-center justify-between mb-4">
+              <h2 className="text-xs font-bold text-slate-400 tracking-widest">BANA ATANAN GÖREVLER</h2>
+              {active.length > 0 && (
+                <span className="text-[10px] bg-indigo-100 text-indigo-700 font-bold px-2 py-0.5 rounded-full">
+                  {active.length} aktif
+                </span>
+              )}
+            </div>
+            {active.length === 0 ? (
+              <div className="flex flex-col items-center justify-center py-5 text-center">
+                <span className="text-2xl mb-1.5">✓</span>
+                <p className="text-xs text-slate-400">Aktif atanmış görev yok</p>
+              </div>
+            ) : (
+              <>
+                <div className="grid grid-cols-4 gap-2">
+                  {active.slice(0, 8).map(task => {
+                    const ws = workspaces.find(w => w.id === task.workspace_id)
+                    const isOverdue = task.end_date && new Date(task.end_date) < today && task.status !== 'tamamlandi'
+                    const pri = PRIORITY_COLORS[task.priority as keyof typeof PRIORITY_COLORS] ?? PRIORITY_COLORS.orta
+                    return (
+                      <button
+                        key={task.id}
+                        onClick={() => onAssignedTaskClick(task)}
+                        className={`flex flex-col gap-1.5 p-3 rounded-xl text-left border transition-all hover:shadow-sm ${
+                          isOverdue
+                            ? 'border-red-200 bg-red-50 hover:bg-red-100'
+                            : 'border-slate-100 hover:bg-slate-50 hover:border-slate-200'
+                        }`}
+                      >
+                        <div className="flex items-center gap-1.5">
+                          <div className="w-2 h-2 rounded-full flex-shrink-0" style={{ background: ws?.color || '#6366f1' }} />
+                          <span className="text-[9px] text-slate-400 truncate">{ws?.name}</span>
+                        </div>
+                        <p className="text-xs font-medium text-slate-700 leading-snug line-clamp-2">{task.title}</p>
+                        <div className="flex items-center gap-1 mt-auto pt-0.5 flex-wrap">
+                          <span
+                            className="text-[9px] font-medium px-1.5 py-0.5 rounded-full"
+                            style={{ background: pri.bg, color: pri.text }}
+                          >
+                            {PRIORITY_LABELS[task.priority as keyof typeof PRIORITY_LABELS] ?? task.priority}
+                          </span>
+                          {task.end_date && (
+                            <span className={`text-[9px] font-medium px-1.5 py-0.5 rounded-full ml-auto ${
+                              isOverdue ? 'bg-red-100 text-red-600' : 'bg-slate-100 text-slate-500'
+                            }`}>
+                              {formatDate(task.end_date)}
+                            </span>
+                          )}
+                        </div>
+                      </button>
+                    )
+                  })}
+                </div>
+                {active.length > 8 && (
+                  <p className="text-[10px] text-slate-400 text-center mt-3">+{active.length - 8} görev daha</p>
+                )}
+              </>
+            )}
+          </div>
+        )
+      })()}
 
       {/* ── Middle row ── */}
       <div className="grid grid-cols-3 gap-4">

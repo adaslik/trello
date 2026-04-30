@@ -13,6 +13,19 @@ export interface Profile {
   role: UserRole
   workspace_ids: string[]
   avatar_url?: string
+  // YK üyesi alanları
+  sicil_no?: string
+  gorev?: string
+  dogum_tarihi?: string
+  telefon?: string
+  sosyal_medya?: {
+    twitter?: string
+    linkedin?: string
+    instagram?: string
+    facebook?: string
+  }
+  web_sayfasi?: string
+  kimdir?: string
   created_at: string
 }
 
