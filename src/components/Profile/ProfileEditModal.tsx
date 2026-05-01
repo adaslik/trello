@@ -1,9 +1,10 @@
 'use client'
 
 import { useState, useEffect } from 'react'
-import { X, Save, Globe, Phone, FileText, Home } from 'lucide-react'
+import { X, Save, Globe, Phone, FileText, Home, Lock } from 'lucide-react'
 import { useRouter } from 'next/navigation'
 import { useAuth } from '@/hooks/useAuth'
+import { createBrowserClient } from '@/lib/supabase'
 import type { Profile } from '@/types'
 import toast from 'react-hot-toast'
 
@@ -19,9 +20,13 @@ export default function ProfileEditModal(props: ProfileEditModalProps) {
   const router = useRouter()
   const { profile: currentUser, updateProfile } = useAuth()
   const [loading, setLoading] = useState(false)
-  
+  const [showPassword, setShowPassword] = useState(false)
+  const [newPassword, setNewPassword] = useState('')
+  const [confirmPassword, setConfirmPassword] = useState('')
+
   const targetProfile = editProfile || currentUser
   const isYKChairman = currentUser?.role === 'yk_baskani'
+  const isOwnProfile = !isCreateMode && (!editProfile || editProfile.id === currentUser?.id)
   
   const [form, setForm] = useState({
     full_name: '',
@@ -75,19 +80,30 @@ export default function ProfileEditModal(props: ProfileEditModalProps) {
         if (!res.ok) throw new Error(result.error || 'Üye oluşturulamadı')
         toast.success('YK üyesi eklendi. Üye şifresini "Şifremi Unuttum" ile belirleyebilir.')
       } else if (editProfile && isYKChairman) {
-        const { createBrowserClient } = await import('@/lib/supabase')
         const supabase = createBrowserClient()
         const { error } = await supabase
           .from('profiles')
           .update(form)
           .eq('id', editProfile.id)
-        
         if (error) throw error
         toast.success('Profil güncellendi')
       } else {
         await updateProfile(form)
         toast.success('Profil güncellendi')
       }
+
+      if (isOwnProfile && showPassword && newPassword) {
+        if (newPassword !== confirmPassword) {
+          toast.error('Şifreler eşleşmiyor')
+          setLoading(false)
+          return
+        }
+        const supabase = createBrowserClient()
+        const { error: pwError } = await supabase.auth.updateUser({ password: newPassword })
+        if (pwError) throw pwError
+        toast.success('Şifre güncellendi')
+      }
+
       onClose()
     } catch (error) {
       console.error('Profile update error:', error)
@@ -225,6 +241,45 @@ export default function ProfileEditModal(props: ProfileEditModalProps) {
                 className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-indigo-500 resize-none"
               />
             </div>
+
+            {isOwnProfile && (
+              <div className="border-t border-gray-200 pt-4">
+                <button
+                  type="button"
+                  onClick={() => { setShowPassword(!showPassword); setNewPassword(''); setConfirmPassword('') }}
+                  className="flex items-center gap-2 text-sm text-indigo-600 hover:text-indigo-800 font-medium"
+                >
+                  <Lock size={14} />
+                  {showPassword ? 'Şifre değişikliğini iptal et' : 'Şifre Değiştir'}
+                </button>
+                {showPassword && (
+                  <div className="mt-3 space-y-3">
+                    <div>
+                      <label className="block text-sm font-medium text-gray-700 mb-1">Yeni Şifre</label>
+                      <input
+                        type="password"
+                        value={newPassword}
+                        onChange={e => setNewPassword(e.target.value)}
+                        minLength={6}
+                        placeholder="En az 6 karakter"
+                        className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-indigo-500"
+                      />
+                    </div>
+                    <div>
+                      <label className="block text-sm font-medium text-gray-700 mb-1">Şifre Tekrar</label>
+                      <input
+                        type="password"
+                        value={confirmPassword}
+                        onChange={e => setConfirmPassword(e.target.value)}
+                        minLength={6}
+                        placeholder="Şifrenizi tekrar girin"
+                        className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-indigo-500"
+                      />
+                    </div>
+                  </div>
+                )}
+              </div>
+            )}
 
             <div className="flex gap-3 pt-4">
               <button
