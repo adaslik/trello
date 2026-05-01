@@ -66,28 +66,14 @@ export default function ProfileEditModal(props: ProfileEditModalProps) {
 
     try {
       if (isCreateMode && isYKChairman) {
-        const { createBrowserClient } = await import('@/lib/supabase')
-        const supabase = createBrowserClient()
-        
-        const newUserId = crypto.randomUUID()
-        
-        const { error: profileError } = await supabase
-          .from('profiles')
-          .insert({
-            id: newUserId,
-            email: form.email,
-            full_name: form.full_name,
-            initials: form.full_name.substring(0, 2).toUpperCase(),
-            role: form.role,
-            gorev: form.gorev,
-            sicil_no: form.sicil_no,
-            telefon: form.telefon,
-            web_sayfasi: form.web_sayfasi,
-            kimdir: form.kimdir,
-          })
-        
-        if (profileError) throw profileError
-        toast.success('YK üyesi eklendi')
+        const res = await fetch('/api/create-member', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify(form),
+        })
+        const result = await res.json()
+        if (!res.ok) throw new Error(result.error || 'Üye oluşturulamadı')
+        toast.success('YK üyesi eklendi. Üye şifresini "Şifremi Unuttum" ile belirleyebilir.')
       } else if (editProfile && isYKChairman) {
         const { createBrowserClient } = await import('@/lib/supabase')
         const supabase = createBrowserClient()
