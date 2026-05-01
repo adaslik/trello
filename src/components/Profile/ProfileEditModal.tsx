@@ -1,7 +1,7 @@
 'use client'
 
 import { useState, useEffect } from 'react'
-import { X, Save, Globe, Phone, FileText, ArrowLeft, Home } from 'lucide-react'
+import { X, Save, Globe, Phone, FileText, Home } from 'lucide-react'
 import { useRouter } from 'next/navigation'
 import { useAuth } from '@/hooks/useAuth'
 import type { Profile } from '@/types'
@@ -10,22 +10,22 @@ import toast from 'react-hot-toast'
 interface ProfileEditModalProps {
   isOpen: boolean
   onClose: () => void
-  editProfile?: Profile | null // YK başkanı başkasını düzenleyebilir
-  isCreateMode?: boolean // Yeni üye oluşturma modu
+  editProfile?: Profile | null
+  isCreateMode?: boolean
 }
 
-export default function ProfileEditModal({ isOpen, onClose, editProfile, isCreateMode }: ProfileEditModalProps) {
+export default function ProfileEditModal(props: ProfileEditModalProps) {
+  const { isOpen, onClose, editProfile, isCreateMode } = props
   const router = useRouter()
   const { profile: currentUser, updateProfile } = useAuth()
   const [loading, setLoading] = useState(false)
   
-  // Düzenlenecek profil: YK başkanı başkasını düzenliyorsa editProfile, yoksa kendisi
   const targetProfile = editProfile || currentUser
   const isYKChairman = currentUser?.role === 'yk_baskani'
   
   const [form, setForm] = useState({
     full_name: '',
-    email: '', // Yeni üye için e-posta
+    email: '',
     gorev: '',
     sicil_no: '',
     telefon: '',
@@ -36,7 +36,6 @@ export default function ProfileEditModal({ isOpen, onClose, editProfile, isCreat
 
   useEffect(() => {
     if (isCreateMode) {
-      // Yeni üye oluşturma modu - formu temizle
       setForm({
         full_name: '',
         email: '',
@@ -67,64 +66,29 @@ export default function ProfileEditModal({ isOpen, onClose, editProfile, isCreat
 
     try {
       if (isCreateMode && isYKChairman) {
-        // YK başkanı yeni üye oluşturuyor
         const { createBrowserClient } = await import('@/lib/supabase')
         const supabase = createBrowserClient()
         
-        // Önce auth.users'da davet oluştur
-        const inviteData = {
-          email: form.email,
-          role: 'calisan', // Başlangıç rolü
-          email_confirm: true, // Otomatik onay
-        }
+        const newUserId = crypto.randomUUID()
         
-        // Kullanıcı davet et ve profili oluştur
-        const { data: inviteData: inviteResult, error: inviteError } = await supabase.auth.admin.inviteUserByEmail(form.email, {
-          data: {
+        const { error: profileError } = await supabase
+          .from('profiles')
+          .insert({
+            id: newUserId,
+            email: form.email,
             full_name: form.full_name,
-          }
-        })
+            initials: form.full_name.substring(0, 2).toUpperCase(),
+            role: form.role,
+            gorev: form.gorev,
+            sicil_no: form.sicil_no,
+            telefon: form.telefon,
+            web_sayfasi: form.web_sayfasi,
+            kimdir: form.kimdir,
+          })
         
-        if (inviteError) {
-          // Davet başarısız olursa direkt profil oluştur (manual)
-          const { error: profileError } = await supabase
-            .from('profiles')
-            .insert({
-              email: form.email,
-              full_name: form.full_name,
-              initials: form.full_name.substring(0, 2).toUpperCase(),
-              role: form.role,
-              gorev: form.gorev,
-              sicil_no: form.sicil_no,
-              telefon: form.telefon,
-              web_sayfasi: form.web_sayfasi,
-              kimdir: form.kimdir,
-            })
-          
-          if (profileError) throw profileError
-        } else {
-          // Davet başarılı - profili güncelle
-          if (inviteResult?.user) {
-            const { error: profileError } = await supabase
-              .from('profiles')
-              .update({
-                full_name: form.full_name,
-                role: form.role,
-                gorev: form.gorev,
-                sicil_no: form.sicil_no,
-                telefon: form.telefon,
-                web_sayfasi: form.web_sayfasi,
-                kimdir: form.kimdir,
-              })
-              .eq('id', inviteResult.user.id)
-            
-            if (profileError) throw profileError
-          }
-        }
-        
-        toast.success('YK üyesi davet edildi')
+        if (profileError) throw profileError
+        toast.success('YK üyesi eklendi')
       } else if (editProfile && isYKChairman) {
-        // YK başkanı başkasını düzenliyor - doğrudan güncelleme
         const { createBrowserClient } = await import('@/lib/supabase')
         const supabase = createBrowserClient()
         const { error } = await supabase
@@ -135,7 +99,6 @@ export default function ProfileEditModal({ isOpen, onClose, editProfile, isCreat
         if (error) throw error
         toast.success('Profil güncellendi')
       } else {
-        // Kullanıcı kendi profilini güncelliyor
         await updateProfile(form)
         toast.success('Profil güncellendi')
       }
@@ -150,14 +113,12 @@ export default function ProfileEditModal({ isOpen, onClose, editProfile, isCreat
 
   if (!isOpen) return null
 
-  const isYKChairman = currentUser?.role === 'yk_baskani'
   const isEditingOther = editProfile && editProfile.id !== currentUser?.id
 
   return (
     <div className="fixed inset-0 bg-black/50 flex items-center justify-center z-50 p-4">
       <div className="bg-white rounded-xl shadow-xl max-w-md w-full max-h-[90vh] overflow-auto">
         <div className="p-6">
-          {/* Header */}
           <div className="flex items-center justify-between mb-6">
             <div className="flex items-center gap-3">
               {isCreateMode && (
@@ -171,7 +132,7 @@ export default function ProfileEditModal({ isOpen, onClose, editProfile, isCreat
                 </button>
               )}
               <h2 className="text-xl font-bold text-gray-900">
-                {isCreateMode ? 'Yeni YK Üyesi Oluştur' : isEditingOther ? `${form.full_name} - Düzenle` : 'Profilini Düzenle'}
+                {isCreateMode ? 'Yeni YK Üyesi Oluştur' : isEditingOther ? form.full_name + ' - Düzenle' : 'Profilini Düzenle'}
               </h2>
             </div>
             <button onClick={onClose} className="text-gray-400 hover:text-gray-600">
@@ -180,47 +141,38 @@ export default function ProfileEditModal({ isOpen, onClose, editProfile, isCreat
           </div>
 
           <form onSubmit={handleSubmit} className="space-y-4">
-            {/* Ad Soyad */}
             <div>
-              <label className="block text-sm font-medium text-gray-700 mb-1">
-                Ad Soyad
-              </label>
+              <label className="block text-sm font-medium text-gray-700 mb-1">Ad Soyad</label>
               <input
                 type="text"
                 value={form.full_name}
                 onChange={(e) => setForm({ ...form, full_name: e.target.value })}
-                className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-indigo-500 focus:border-indigo-500"
+                className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-indigo-500"
                 required
               />
             </div>
 
-            {/* E-posta - Sadece yeni üye oluştururken */}
             {isCreateMode && (
               <div>
-                <label className="block text-sm font-medium text-gray-700 mb-1">
-                  E-posta
-                </label>
+                <label className="block text-sm font-medium text-gray-700 mb-1">E-posta</label>
                 <input
                   type="email"
                   value={form.email}
                   onChange={(e) => setForm({ ...form, email: e.target.value })}
                   placeholder="ornek@email.com"
-                  className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-indigo-500 focus:border-indigo-500"
+                  className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-indigo-500"
                   required
                 />
               </div>
             )}
 
-            {/* Rol - Sadece yeni üye oluştururken ve YK başkanı ise */}
             {isCreateMode && isYKChairman && (
               <div>
-                <label className="block text-sm font-medium text-gray-700 mb-1">
-                  Rol
-                </label>
+                <label className="block text-sm font-medium text-gray-700 mb-1">Rol</label>
                 <select
                   value={form.role}
                   onChange={(e) => setForm({ ...form, role: e.target.value as 'yk_uyesi' | 'yk_baskani' })}
-                  className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-indigo-500 focus:border-indigo-500"
+                  className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-indigo-500"
                 >
                   <option value="yk_uyesi">YK Üyesi</option>
                   <option value="yk_baskani">YK Başkanı</option>
@@ -228,80 +180,66 @@ export default function ProfileEditModal({ isOpen, onClose, editProfile, isCreat
               </div>
             )}
 
-            {/* Görev */}
             <div>
               <label className="block text-sm font-medium text-gray-700 mb-1">
-                <FileText size={14} className="inline mr-1" />
-                Görev
+                <FileText size={14} className="inline mr-1" />Görev
               </label>
               <input
                 type="text"
                 value={form.gorev}
                 onChange={(e) => setForm({ ...form, gorev: e.target.value })}
                 placeholder="örn: Başkan Yardımcısı"
-                className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-indigo-500 focus:border-indigo-500"
+                className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-indigo-500"
               />
             </div>
 
-            {/* Sicil No */}
             <div>
-              <label className="block text-sm font-medium text-gray-700 mb-1">
-                Sicil No
-              </label>
+              <label className="block text-sm font-medium text-gray-700 mb-1">Sicil No</label>
               <input
                 type="text"
                 value={form.sicil_no}
                 onChange={(e) => setForm({ ...form, sicil_no: e.target.value })}
-                placeholder="Sicil numaranız"
-                className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-indigo-500 focus:border-indigo-500"
+                className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-indigo-500"
               />
             </div>
 
-            {/* Telefon */}
             <div>
               <label className="block text-sm font-medium text-gray-700 mb-1">
-                <Phone size={14} className="inline mr-1" />
-                Telefon
+                <Phone size={14} className="inline mr-1" />Telefon
               </label>
               <input
                 type="tel"
                 value={form.telefon}
                 onChange={(e) => setForm({ ...form, telefon: e.target.value })}
                 placeholder="+90 555 123 4567"
-                className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-indigo-500 focus:border-indigo-500"
+                className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-indigo-500"
               />
             </div>
 
-            {/* Web Sayfası */}
             <div>
               <label className="block text-sm font-medium text-gray-700 mb-1">
-                <Globe size={14} className="inline mr-1" />
-                Web Sayfası
+                <Globe size={14} className="inline mr-1" />Web Sayfası
               </label>
               <input
                 type="url"
                 value={form.web_sayfasi}
                 onChange={(e) => setForm({ ...form, web_sayfasi: e.target.value })}
                 placeholder="https://ornek.com"
-                className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-indigo-500 focus:border-indigo-500"
+                className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-indigo-500"
               />
             </div>
 
-            {/* Kimdir */}
             <div>
-              <label className="block text-sm font-medium text-gray-700 mb-1">
-                Hakkında
-              </label>
+              <label className="block text-sm font-medium text-gray-700 mb-1">Hakkında</label>
               <textarea
                 value={form.kimdir}
                 onChange={(e) => setForm({ ...form, kimdir: e.target.value })}
                 placeholder="Kısa biyografi..."
                 rows={3}
-                className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-indigo-500 focus:border-indigo-500 resize-none"
+                className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-indigo-500 resize-none"
               />
             </div>
 
-            {/* Buttons */}
             <div className="flex gap-3 pt-4">
               <button
                 type="button"
