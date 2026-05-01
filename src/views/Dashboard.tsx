@@ -11,6 +11,7 @@ import TaskModal from '@/components/Task/TaskModal'
 import HomeView from '@/components/Home/HomeView'
 import YKUyeCard from '@/components/Profile/YKUyeCard'
 import JoinRequestCard from '@/components/JoinRequest/JoinRequestCard'
+import ProfileEditModal from '@/components/Profile/ProfileEditModal'
 import { useAuth } from '@/hooks/useAuth'
 import { useWorkspaces } from '@/hooks/useWorkspaces'
 import { useTasks } from '@/hooks/useTasks'
@@ -40,6 +41,8 @@ export default function Dashboard() {
   const [showNotif, setShowNotif] = useState(false)
   const [showWsModal, setShowWsModal] = useState(false)
   const [showManageModal, setShowManageModal] = useState(false)
+  const [showProfileModal, setShowProfileModal] = useState(false)
+  const [editingProfile, setEditingProfile] = useState<Profile | null>(null)
   const [wsForm, setWsForm] = useState({ name: '', category: 'birim', color: WORKSPACE_COLORS[0], boards: '', access_roles: ['yk_baskani'] as string[], editId: null as string | null, defaultCat: 'birim' })
 
   const activeWs = workspaces.find(w => w.id === activeWsId)
@@ -180,6 +183,7 @@ export default function Dashboard() {
         onSelectWs={selectWs}
         onAddWs={(cat) => openWsModal(null, cat)}
         onManage={() => setShowManageModal(true)}
+        onEditProfile={() => setShowProfileModal(true)}
       />
 
       {/* Main */}
@@ -436,6 +440,13 @@ export default function Dashboard() {
           </div>
         </div>
       )}
+
+      {/* Profile Edit Modal */}
+      <ProfileEditModal
+        isOpen={showProfileModal}
+        onClose={() => { setShowProfileModal(false); setEditingProfile(null) }}
+        editProfile={editingProfile}
+      />
     </div>
   )
 }

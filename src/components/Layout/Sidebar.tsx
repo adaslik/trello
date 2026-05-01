@@ -1,6 +1,6 @@
 'use client'
 
-import { Plus, LogOut, Settings } from 'lucide-react'
+import { Plus, LogOut, Settings, User } from 'lucide-react'
 import type { Workspace, Profile } from '@/types'
 import { CAT_ORDER, CAT_LABELS, lightenColor } from '@/lib/constants'
 import { useAuth } from '@/hooks/useAuth'
@@ -13,11 +13,12 @@ interface SidebarProps {
   onSelectWs: (id: string) => void
   onAddWs: (cat: string) => void
   onManage: () => void
+  onEditProfile?: () => void
 }
 
 export default function Sidebar({
   workspaces, activeWsId, profile, unreadByWs,
-  onSelectWs, onAddWs, onManage,
+  onSelectWs, onAddWs, onManage, onEditProfile,
 }: SidebarProps) {
   const { signOut } = useAuth()
   const isYK = profile.role === 'yk_baskani' || profile.role === 'yk_uyesi'
@@ -98,6 +99,9 @@ export default function Sidebar({
 
       {/* Footer */}
       <div className="p-3 border-t border-slate-700 flex gap-2">
+        <button onClick={onEditProfile} className="flex-1 flex items-center justify-center gap-1 text-[10px] text-slate-400 hover:text-white py-1.5 rounded-lg hover:bg-slate-800">
+          <User size={12} /> Profil
+        </button>
         {isYK && (
           <button onClick={onManage} className="flex-1 flex items-center justify-center gap-1 text-[10px] text-slate-400 hover:text-white py-1.5 rounded-lg hover:bg-slate-800">
             <Settings size={12} /> Yönet

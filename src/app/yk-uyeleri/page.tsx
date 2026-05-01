@@ -1,16 +1,21 @@
 'use client'
 
 import { useState, useEffect } from 'react'
-import { Users, Mail, Phone, Globe, Calendar, ChevronLeft, ChevronRight } from 'lucide-react'
+import { Users, Mail, Phone, Globe, Calendar, ChevronLeft, ChevronRight, Edit } from 'lucide-react'
 import { createBrowserClient } from '@/lib/supabase'
 import { ROLE_LABELS } from '@/lib/constants'
 import type { Profile } from '@/types'
+import ProfileEditModal from '@/components/Profile/ProfileEditModal'
+import { useAuth } from '@/hooks/useAuth'
 
 export default function YKUyelerPage() {
   const supabase = createBrowserClient()
+  const { profile: currentUser } = useAuth()
   const [members, setMembers] = useState<Profile[]>([])
   const [loading, setLoading] = useState(true)
   const [selectedMember, setSelectedMember] = useState<Profile | null>(null)
+  const [showProfileModal, setShowProfileModal] = useState(false)
+  const [editingProfile, setEditingProfile] = useState<Profile | null>(null)
 
   useEffect(() => {
     supabase
@@ -136,6 +141,15 @@ export default function YKUyelerPage() {
                       <p className="text-gray-600 mt-1">{selectedMember.gorev}</p>
                     )}
                   </div>
+                  {currentUser?.role === 'yk_baskani' && (
+                    <button
+                      onClick={() => { setEditingProfile(selectedMember); setShowProfileModal(true) }}
+                      className="p-2 text-gray-400 hover:text-indigo-600 hover:bg-indigo-50 rounded-lg"
+                      title="Düzenle"
+                    >
+                      <Edit size={18} />
+                    </button>
+                  )}
                   <button
                     onClick={() => setSelectedMember(null)}
                     className="text-gray-400 hover:text-gray-600"
@@ -246,6 +260,13 @@ export default function YKUyelerPage() {
             </div>
           </div>
         )}
+
+        {/* Profile Edit Modal */}
+        <ProfileEditModal
+          isOpen={showProfileModal}
+          onClose={() => { setShowProfileModal(false); setEditingProfile(null) }}
+          editProfile={editingProfile}
+        />
       </div>
     </div>
   )
