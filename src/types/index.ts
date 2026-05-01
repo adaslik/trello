@@ -66,6 +66,12 @@ export interface Comment {
   created_at: string
 }
 
+export interface TaskAssignee {
+  id: string
+  full_name: string
+  initials: string
+}
+
 export interface Task {
   id: string
   workspace_id: string
@@ -73,9 +79,7 @@ export interface Task {
   description: string
   status: TaskStatus
   priority: Priority
-  assignee_id: string | null
-  assignee_name: string | null
-  assignee_initials: string | null
+  assignees: TaskAssignee[]
   start_date: string | null
   end_date: string | null
   board: string | null

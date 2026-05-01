@@ -84,7 +84,7 @@ export default function GanttView({ tasks, wsColor, onTaskClick }: GanttViewProp
                   className="absolute h-5 rounded-full flex items-center px-2 text-[9px] font-semibold overflow-hidden whitespace-nowrap"
                   style={{ left: `${s}%`, width: `${w}%`, background: barBg, color: wsColor, minWidth: 8 }}
                 >
-                  {w > 8 ? task.assignee_initials || '' : ''}
+                  {w > 8 ? (task.assignees?.map(a => a.initials).join(', ') || '') : ''}
                 </div>
               </div>
             </div>

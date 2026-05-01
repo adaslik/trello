@@ -88,11 +88,11 @@ function KanbanCard({ task, labels, wsColor, onClick }: KanbanCardProps) {
           >
             {PRIORITY_LABELS[task.priority as keyof typeof PRIORITY_LABELS] ?? task.priority}
           </span>
-          {task.assignee_initials && (
-            <span className="w-5 h-5 rounded-full bg-indigo-100 text-indigo-700 text-[8px] font-bold flex items-center justify-center">
-              {task.assignee_initials}
+          {task.assignees?.map(a => (
+            <span key={a.id} className="w-5 h-5 rounded-full bg-indigo-100 text-indigo-700 text-[8px] font-bold flex items-center justify-center" title={a.full_name}>
+              {a.initials}
             </span>
-          )}
+          ))}
           {task.end_date && (
             <span className="text-[9px] text-slate-400 ml-auto">
               {new Date(task.end_date).toLocaleDateString('tr-TR', { day: 'numeric', month: 'short' })}

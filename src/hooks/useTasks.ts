@@ -55,6 +55,9 @@ export function useTasks(workspaceId: string | null) {
   const createTask = async (task: Partial<Task>) => {
     if (!user || !workspaceId) return null
     const maxPos = tasks.length ? Math.max(...tasks.map(t => t.position)) + 1 : 0
+    const assignees = task.assignees?.length
+      ? task.assignees
+      : [{ id: user.id, full_name: profile?.full_name || '', initials: profile?.initials || '' }]
     const { data, error } = await supabase
       .from('tasks')
       .insert({
@@ -62,9 +65,7 @@ export function useTasks(workspaceId: string | null) {
         workspace_id: workspaceId,
         created_by: user.id,
         position: maxPos,
-        assignee_id: task.assignee_id || user.id,
-        assignee_name: task.assignee_name || profile?.full_name,
-        assignee_initials: task.assignee_initials || profile?.initials,
+        assignees,
       })
       .select()
       .single()

@@ -33,7 +33,9 @@ export default function TaskModal({
   const [desc, setDesc] = useState(task?.description || '')
   const [status, setStatus] = useState<Task['status']>(task?.status || defaultStatus)
   const [priority, setPriority] = useState<Task['priority']>(task?.priority || 'orta')
-  const [assigneeId, setAssigneeId] = useState(task?.assignee_id || profile?.id || '')
+  const [selectedAssigneeIds, setSelectedAssigneeIds] = useState<string[]>(
+    task?.assignees?.map(a => a.id) ?? (profile?.id ? [profile.id] : [])
+  )
   const [startDate, setStartDate] = useState(task?.start_date || '')
   const [endDate, setEndDate] = useState(task?.end_date || '')
   const [board, setBoard] = useState(task?.board || '')
@@ -109,18 +111,14 @@ export default function TaskModal({
   const handleSave = async () => {
     if (!title.trim()) return
     setSaving(true)
-    const assignee = members.find(m => m.id === assigneeId)
-    // Apply any local label name edits
-    const updatedLabels = labels.map(l =>
-      localLabelNames[l.id] ? { ...l, name: localLabelNames[l.id] } : l
-    )
+    const assignees = members
+      .filter(m => selectedAssigneeIds.includes(m.id))
+      .map(m => ({ id: m.id, full_name: m.full_name, initials: m.initials }))
     await onSave({
       title: title.trim(),
       description: desc,
       status, priority,
-      assignee_id: assigneeId || null,
-      assignee_name: assignee?.full_name || null,
-      assignee_initials: assignee?.initials || null,
+      assignees,
       start_date: startDate || null,
       end_date: endDate || null,
       board: board || null,
@@ -359,16 +357,31 @@ export default function TaskModal({
               </select>
             </div>
             <div>
-              <p className="text-[9px] font-bold text-slate-400 tracking-widest mb-1.5">SORUMLU</p>
-              <select
-                className="w-full text-xs px-2 py-2 border border-slate-200 rounded-lg bg-white"
-                value={assigneeId} onChange={e => setAssigneeId(e.target.value)}
-              >
-                <option value="">Atanmamış</option>
-                {members.map(m => (
-                  <option key={m.id} value={m.id}>{m.full_name}</option>
-                ))}
-              </select>
+              <p className="text-[9px] font-bold text-slate-400 tracking-widest mb-1.5">SORUMLULAR</p>
+              <div className="space-y-1">
+                {members.map(m => {
+                  const checked = selectedAssigneeIds.includes(m.id)
+                  return (
+                    <div
+                      key={m.id}
+                      className="flex items-center gap-2 px-2 py-1.5 rounded-lg hover:bg-white cursor-pointer"
+                      onClick={() => setSelectedAssigneeIds(prev =>
+                        prev.includes(m.id) ? prev.filter(id => id !== m.id) : [...prev, m.id]
+                      )}
+                    >
+                      <div className="w-6 h-6 rounded-full bg-indigo-100 text-indigo-700 text-[9px] font-bold flex items-center justify-center flex-shrink-0">
+                        {m.initials}
+                      </div>
+                      <span className="flex-1 text-xs text-slate-700 truncate">{m.full_name}</span>
+                      <div className={`w-4 h-4 rounded flex items-center justify-center text-[10px] flex-shrink-0 border ${
+                        checked ? 'bg-indigo-600 border-indigo-600 text-white' : 'border-slate-300'
+                      }`}>
+                        {checked && '✓'}
+                      </div>
+                    </div>
+                  )
+                })}
+              </div>
             </div>
             <div>
               <p className="text-[9px] font-bold text-slate-400 tracking-widest mb-1.5">BAŞLANGIÇ</p>

@@ -24,7 +24,7 @@ export default function HomeView({ workspaces, profile, notifications, assignedT
     const wsIds = workspaces.map(w => w.id)
     supabase
       .from('tasks')
-      .select('id,title,status,priority,end_date,workspace_id,created_at,assignee_initials,assignee_name')
+      .select('id,title,status,priority,end_date,workspace_id,created_at,assignees')
       .in('workspace_id', wsIds)
       .then(({ data }) => {
         if (data) setTasks(data as Task[])
@@ -368,11 +368,11 @@ export default function HomeView({ workspaces, profile, notifications, assignedT
                       <p className="text-xs font-medium text-slate-700 truncate">{task.title}</p>
                       <p className="text-[10px] text-slate-400">{ws?.name}</p>
                     </div>
-                    {task.assignee_initials && (
-                      <span className="w-6 h-6 rounded-full bg-indigo-100 text-indigo-700 text-[8px] font-bold flex items-center justify-center flex-shrink-0">
-                        {task.assignee_initials}
+                    {task.assignees?.slice(0, 3).map(a => (
+                      <span key={a.id} className="w-6 h-6 rounded-full bg-indigo-100 text-indigo-700 text-[8px] font-bold flex items-center justify-center flex-shrink-0" title={a.full_name}>
+                        {a.initials}
                       </span>
-                    )}
+                    ))}
                     <span
                       className="text-[9px] font-medium px-1.5 py-0.5 rounded-full flex-shrink-0"
                       style={{ background: pri.bg, color: pri.text }}

@@ -17,7 +17,7 @@ export function useAssignedTasks() {
     const { data } = await supabase
       .from('tasks')
       .select('*')
-      .eq('assignee_id', user.id)
+      .filter('assignees', 'cs', JSON.stringify([{ id: user.id }]))
       .order('created_at', { ascending: false })
     if (data) setTasks(data as Task[])
     setLoading(false)
@@ -29,37 +29,36 @@ export function useAssignedTasks() {
 
     const channel = supabase
       .channel(`assigned_tasks:${user.id}`)
-      // Task assigned to me (new or re-assigned)
       .on('postgres_changes', {
         event: 'INSERT',
         schema: 'public',
         table: 'tasks',
-        filter: `assignee_id=eq.${user.id}`,
       }, (payload) => {
         const task = payload.new as Task
-        setTasks(prev => {
-          if (prev.find(t => t.id === task.id)) return prev
-          toast(`Yeni görev atandı: "${task.title}"`)
-          return [task, ...prev]
-        })
+        if (task.assignees?.some(a => a.id === user.id)) {
+          setTasks(prev => {
+            if (prev.find(t => t.id === task.id)) return prev
+            toast(`Yeni görev atandı: "${task.title}"`)
+            return [task, ...prev]
+          })
+        }
       })
-      // Content updated on a task that is still assigned to me
-      .on('postgres_changes', {
-        event: 'UPDATE',
-        schema: 'public',
-        table: 'tasks',
-        filter: `assignee_id=eq.${user.id}`,
-      }, (payload) => {
-        setTasks(prev => prev.map(t => t.id === payload.new.id ? payload.new as Task : t))
-      })
-      // Catch all UPDATEs to detect when a task is re-assigned away from me
       .on('postgres_changes', {
         event: 'UPDATE',
         schema: 'public',
         table: 'tasks',
       }, (payload) => {
         const updated = payload.new as Task
-        if (updated.assignee_id !== user.id) {
+        if (updated.assignees?.some(a => a.id === user.id)) {
+          setTasks(prev => {
+            const exists = prev.find(t => t.id === updated.id)
+            if (!exists) {
+              toast(`Yeni görev atandı: "${updated.title}"`)
+              return [updated, ...prev]
+            }
+            return prev.map(t => t.id === updated.id ? updated : t)
+          })
+        } else {
           setTasks(prev => prev.filter(t => t.id !== updated.id))
         }
       })
