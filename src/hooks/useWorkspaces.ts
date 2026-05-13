@@ -1,6 +1,6 @@
 'use client'
 
-import { useEffect, useState, useCallback } from 'react'
+import { useEffect, useState, useCallback, useRef } from 'react'
 import { createBrowserClient } from '@/lib/supabase'
 import { useAuth } from './useAuth'
 import type { Workspace, Label } from '@/types'
@@ -23,6 +23,8 @@ export function useWorkspaces() {
     setLoading(false)
   }, [user])
 
+  const seedingRef = useRef<Set<string>>(new Set())
+
   const fetchLabels = useCallback(async (wsId: string) => {
     const { data } = await supabase
       .from('labels')
@@ -33,7 +35,10 @@ export function useWorkspaces() {
     if (data && data.length > 0) {
       setLabels(prev => ({ ...prev, [wsId]: data as Label[] }))
     } else {
-      // Seed 10 default labels
+      // Eş zamanlı tekrar seeding'i önle
+      if (seedingRef.current.has(wsId)) return
+      seedingRef.current.add(wsId)
+
       const defaults = LABEL_COLORS.map((color, i) => ({
         workspace_id: wsId,
         name: DEFAULT_LABEL_NAMES[i],
@@ -42,8 +47,9 @@ export function useWorkspaces() {
       }))
       const { data: inserted } = await supabase
         .from('labels')
-        .insert(defaults)
+        .upsert(defaults, { onConflict: 'workspace_id,position', ignoreDuplicates: true })
         .select()
+      seedingRef.current.delete(wsId)
       if (inserted) setLabels(prev => ({ ...prev, [wsId]: inserted as Label[] }))
     }
   }, [])
