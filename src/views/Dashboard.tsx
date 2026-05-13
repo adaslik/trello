@@ -1,7 +1,7 @@
 'use client'
 
 import { useState, useEffect, useCallback } from 'react'
-import { Bell, Plus, Settings, LayoutGrid, BarChart2, Calendar, Home, Users } from 'lucide-react'
+import { Bell, Plus, Settings, LayoutGrid, BarChart2, Calendar, Home, Users, LogOut, User, Menu, X as XIcon } from 'lucide-react'
 import { useRouter } from 'next/navigation'
 import Sidebar from '@/components/Layout/Sidebar'
 import KanbanBoard from '@/components/Board/KanbanBoard'
@@ -25,7 +25,7 @@ type View = 'anasayfa' | 'kanban' | 'gantt' | 'takvim'
 
 export default function Dashboard() {
   const router = useRouter()
-  const { profile } = useAuth()
+  const { profile, signOut } = useAuth()
   const supabase = createBrowserClient()
   const { workspaces, labels, createWorkspace, updateWorkspace, deleteWorkspace, fetchLabels } = useWorkspaces()
   const [activeWsId, setActiveWsId] = useState<string | null>(null)
@@ -43,6 +43,7 @@ export default function Dashboard() {
   const [showManageModal, setShowManageModal] = useState(false)
   const [showProfileModal, setShowProfileModal] = useState(false)
   const [editingProfile, setEditingProfile] = useState<Profile | null>(null)
+  const [showMobileMenu, setShowMobileMenu] = useState(false)
   const [wsForm, setWsForm] = useState({ name: '', category: 'birim', color: WORKSPACE_COLORS[0], boards: '', access_roles: ['yk_baskani'] as string[], editId: null as string | null, defaultCat: 'birim' })
 
   const activeWs = workspaces.find(w => w.id === activeWsId)
@@ -291,6 +292,75 @@ export default function Dashboard() {
                 <span className="absolute top-1 right-1 w-2 h-2 bg-red-500 rounded-full" />
               )}
             </button>
+
+            {/* Mobil profil / menü butonu */}
+            <div className="relative md:hidden">
+              <button
+                onClick={() => setShowMobileMenu(v => !v)}
+                className="w-8 h-8 rounded-full bg-indigo-600 text-white text-[11px] font-bold flex items-center justify-center flex-shrink-0"
+              >
+                {profile?.initials}
+              </button>
+              {showMobileMenu && (
+                <>
+                  {/* Arka plan kapanma alanı */}
+                  <div className="fixed inset-0 z-40" onClick={() => setShowMobileMenu(false)} />
+                  <div className="absolute right-0 top-10 bg-white border border-slate-200 rounded-xl shadow-xl z-50 w-52 py-2 overflow-hidden">
+                    {/* Kullanıcı bilgisi */}
+                    <div className="px-4 py-2 border-b border-slate-100 mb-1">
+                      <p className="text-xs font-semibold text-slate-800 truncate">{profile?.full_name}</p>
+                      <p className="text-[10px] text-slate-400 truncate">{profile?.email}</p>
+                    </div>
+                    {/* Workspace listesi */}
+                    <div className="px-3 py-1">
+                      <p className="text-[9px] font-bold text-slate-400 tracking-widest mb-1">ÇALIŞMA ALANLARI</p>
+                      <div className="space-y-0.5 max-h-40 overflow-y-auto">
+                        {workspaces.map(ws => (
+                          <button
+                            key={ws.id}
+                            onClick={() => { selectWs(ws.id); setShowMobileMenu(false) }}
+                            className={`w-full text-left flex items-center gap-2 px-2 py-1.5 rounded-lg text-xs transition-colors ${
+                              activeWsId === ws.id ? 'bg-indigo-50 text-indigo-700 font-medium' : 'text-slate-700 hover:bg-slate-50'
+                            }`}
+                          >
+                            <div className="w-2 h-2 rounded-sm flex-shrink-0" style={{ background: ws.color }} />
+                            <span className="truncate">{ws.name}</span>
+                          </button>
+                        ))}
+                      </div>
+                    </div>
+                    <div className="border-t border-slate-100 mt-2 pt-1">
+                      <button
+                        onClick={() => { router.push('/yk-uyeleri'); setShowMobileMenu(false) }}
+                        className="w-full text-left flex items-center gap-2 px-4 py-2 text-xs text-slate-700 hover:bg-slate-50"
+                      >
+                        <Users size={13} /> YK Üyeleri
+                      </button>
+                      <button
+                        onClick={() => { setEditingProfile(null); setShowProfileModal(true); setShowMobileMenu(false) }}
+                        className="w-full text-left flex items-center gap-2 px-4 py-2 text-xs text-slate-700 hover:bg-slate-50"
+                      >
+                        <User size={13} /> Profilimi Düzenle
+                      </button>
+                      {isYK && (
+                        <button
+                          onClick={() => { openWsModal(); setShowMobileMenu(false) }}
+                          className="w-full text-left flex items-center gap-2 px-4 py-2 text-xs text-slate-700 hover:bg-slate-50"
+                        >
+                          <Plus size={13} /> Yeni Çalışma Alanı
+                        </button>
+                      )}
+                      <button
+                        onClick={() => signOut()}
+                        className="w-full text-left flex items-center gap-2 px-4 py-2 text-xs text-red-500 hover:bg-red-50"
+                      >
+                        <LogOut size={13} /> Çıkış Yap
+                      </button>
+                    </div>
+                  </div>
+                </>
+              )}
+            </div>
           </div>
         </div>
 
