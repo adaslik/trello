@@ -145,7 +145,7 @@ export default function TaskModal({
   const [startDate, setStartDate] = useState(task?.start_date || '')
   const [endDate, setEndDate] = useState(task?.end_date || '')
   const [board, setBoard] = useState(task?.board || '')
-  const [selectedLabels, setSelectedLabels] = useState<number[]>(task?.label_ids || [])
+  const [selectedLabels, setSelectedLabels] = useState<number[]>([...new Set(task?.label_ids || [])])
   const [driveLinks, setDriveLinks] = useState(task?.drive_links || [])
   const [comments, setComments] = useState(task?.comments || [])
   const [coverPattern, setCoverPattern] = useState(task?.cover_pattern ?? Math.floor(Math.random() * 4))

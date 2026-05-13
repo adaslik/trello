@@ -26,7 +26,7 @@ function KanbanCard({ task, labels, wsColor, onClick }: KanbanCardProps) {
   const { attributes, listeners, setNodeRef, transform, transition, isDragging } =
     useSortable({ id: task.id })
   const style = { transform: CSS.Transform.toString(transform), transition, opacity: isDragging ? 0.4 : 1 }
-  const taskLabels = (task.label_ids || []).map(id => labels.find(l => l.id === id)).filter(Boolean) as Label[]
+  const taskLabels = [...new Set(task.label_ids || [])].map(id => labels.find(l => l.id === id)).filter(Boolean) as Label[]
   const pri = PRIORITY_COLORS[task.priority as keyof typeof PRIORITY_COLORS] ?? PRIORITY_COLORS.orta
   const bg = lightenColor(wsColor)
   const coverSvg = COVER_PATTERNS[task.cover_pattern % 4](bg, wsColor)
