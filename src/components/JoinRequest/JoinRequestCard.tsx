@@ -63,27 +63,35 @@ export default function JoinRequestCard({ isYK = false }: JoinRequestCardProps) 
 
   const handleApprove = async (id: string) => {
     try {
-      const { error } = await supabase
+      const { data, error } = await supabase
         .from('join_requests')
         .update({ status: 'approved', processed_at: new Date().toISOString() })
         .eq('id', id)
+        .select()
       if (error) throw error
+      if (!data || data.length === 0) throw new Error('Yetki hatası: bu işlem için yetkiniz olmayabilir')
+      setRequests(prev => prev.map(r => r.id === id ? { ...r, status: 'approved' as const } : r))
       toast.success('Katılma isteği onaylandı')
-    } catch (error) {
-      toast.error('İşlem başarısız')
+    } catch (err: any) {
+      console.error('Approve error:', err)
+      toast.error(err.message || 'İşlem başarısız')
     }
   }
 
   const handleReject = async (id: string) => {
     try {
-      const { error } = await supabase
+      const { data, error } = await supabase
         .from('join_requests')
         .update({ status: 'rejected', processed_at: new Date().toISOString() })
         .eq('id', id)
+        .select()
       if (error) throw error
+      if (!data || data.length === 0) throw new Error('Yetki hatası: bu işlem için yetkiniz olmayabilir')
+      setRequests(prev => prev.map(r => r.id === id ? { ...r, status: 'rejected' as const } : r))
       toast.success('Katılma isteği reddedildi')
-    } catch (error) {
-      toast.error('İşlem başarısız')
+    } catch (err: any) {
+      console.error('Reject error:', err)
+      toast.error(err.message || 'İşlem başarısız')
     }
   }
 
