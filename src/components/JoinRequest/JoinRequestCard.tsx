@@ -61,39 +61,32 @@ export default function JoinRequestCard({ isYK = false }: JoinRequestCardProps) 
     }
   }
 
-  const handleApprove = async (id: string) => {
+  const handleAction = async (id: string, action: 'approve' | 'reject') => {
+    const req = requests.find(r => r.id === id)
+    if (!req) return
     try {
-      const { data, error } = await supabase
-        .from('join_requests')
-        .update({ status: 'approved', processed_at: new Date().toISOString() })
-        .eq('id', id)
-        .select()
-      if (error) throw error
-      if (!data || data.length === 0) throw new Error('Yetki hatası: bu işlem için yetkiniz olmayabilir')
-      setRequests(prev => prev.map(r => r.id === id ? { ...r, status: 'approved' as const } : r))
-      toast.success('Katılma isteği onaylandı')
+      const res = await fetch('/api/approve-join-request', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ requestId: id, email: req.email, action }),
+      })
+      const json = await res.json()
+      if (!res.ok) throw new Error(json.error || 'İşlem başarısız')
+      const newStatus = (action === 'approve' ? 'approved' : 'rejected') as JoinRequest['status']
+      setRequests(prev => prev.map(r => r.id === id ? { ...r, status: newStatus } : r))
+      if (json.warning) {
+        toast.success(json.warning)
+      } else {
+        toast.success(action === 'approve' ? 'Onaylandı — kullanıcı rolü yk_uyesi yapıldı' : 'İstek reddedildi')
+      }
     } catch (err: any) {
-      console.error('Approve error:', err)
+      console.error('handleAction error:', err)
       toast.error(err.message || 'İşlem başarısız')
     }
   }
 
-  const handleReject = async (id: string) => {
-    try {
-      const { data, error } = await supabase
-        .from('join_requests')
-        .update({ status: 'rejected', processed_at: new Date().toISOString() })
-        .eq('id', id)
-        .select()
-      if (error) throw error
-      if (!data || data.length === 0) throw new Error('Yetki hatası: bu işlem için yetkiniz olmayabilir')
-      setRequests(prev => prev.map(r => r.id === id ? { ...r, status: 'rejected' as const } : r))
-      toast.success('Katılma isteği reddedildi')
-    } catch (err: any) {
-      console.error('Reject error:', err)
-      toast.error(err.message || 'İşlem başarısız')
-    }
-  }
+  const handleApprove = (id: string) => handleAction(id, 'approve')
+  const handleReject  = (id: string) => handleAction(id, 'reject')
 
   // YK başkanı görünümü
   if (isYK) {
