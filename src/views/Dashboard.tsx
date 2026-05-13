@@ -175,6 +175,8 @@ export default function Dashboard() {
 
   return (
     <div className="flex h-screen overflow-hidden bg-slate-100">
+      {/* Sidebar — masaüstünde görünür, mobilde gizlenir */}
+      <div className="hidden md:flex">
       <Sidebar
         workspaces={workspaces}
         activeWsId={activeWsId}
@@ -185,71 +187,90 @@ export default function Dashboard() {
         onManage={() => setShowManageModal(true)}
         onEditProfile={() => setShowProfileModal(true)}
       />
+      </div>
 
       {/* Main */}
       <div className="flex-1 flex flex-col min-w-0 overflow-hidden">
         {/* Topbar */}
-        <div className="bg-white border-b border-slate-200 px-6 py-3 flex items-center justify-between flex-shrink-0">
-          <div className="flex items-center gap-3">
-            {view === 'anasayfa' ? (
-              <h1 className="text-sm font-semibold text-slate-800">Ana Sayfa</h1>
-            ) : (
-              <>
-                <div className="w-3 h-3 rounded-sm" style={{ background: activeWs?.color || '#888' }} />
-                <h1 className="text-sm font-semibold text-slate-800">{activeWs?.name || 'Çalışma Alanı'}</h1>
-                <span className={`text-[10px] px-2 py-0.5 rounded-full ${canEdit ? 'bg-green-100 text-green-700' : 'bg-amber-100 text-amber-700'}`}>
-                  {canEdit ? 'Düzenleyebilirsin' : 'Görüntüle'}
-                </span>
-              </>
-            )}
+        <div className="bg-white border-b border-slate-200 px-4 md:px-6 py-3 flex items-center justify-between flex-shrink-0">
+          <div className="flex items-center gap-3 min-w-0 flex-1">
+            {/* Mobilde workspace seçici */}
+            <div className="md:hidden flex-1 min-w-0">
+              <select
+                className="w-full text-sm font-medium text-slate-800 bg-transparent border-none outline-none truncate"
+                value={activeWsId || ''}
+                onChange={e => { if (e.target.value) selectWs(e.target.value) }}
+              >
+                {workspaces.map(ws => (
+                  <option key={ws.id} value={ws.id}>{ws.name}</option>
+                ))}
+              </select>
+            </div>
+            {/* Masaüstünde mevcut başlık */}
+            <div className="hidden md:flex items-center gap-3">
+              {view === 'anasayfa' ? (
+                <h1 className="text-sm font-semibold text-slate-800">Ana Sayfa</h1>
+              ) : (
+                <>
+                  <div className="w-3 h-3 rounded-sm" style={{ background: activeWs?.color || '#888' }} />
+                  <h1 className="text-sm font-semibold text-slate-800">{activeWs?.name || 'Çalışma Alanı'}</h1>
+                  <span className={`text-[10px] px-2 py-0.5 rounded-full ${canEdit ? 'bg-green-100 text-green-700' : 'bg-amber-100 text-amber-700'}`}>
+                    {canEdit ? 'Düzenleyebilirsin' : 'Görüntüle'}
+                  </span>
+                </>
+              )}
+            </div>
           </div>
 
           <div className="flex items-center gap-2">
-            {/* Home button */}
-            <button
-              onClick={() => setView('anasayfa')}
-              className={`flex items-center gap-1.5 px-3 py-1.5 text-[11px] rounded-lg font-medium transition-colors ${
-                view === 'anasayfa' ? 'bg-indigo-600 text-white' : 'bg-slate-100 text-slate-500 hover:text-slate-700'
-              }`}
-            >
-              <Home size={12} /> Ana Sayfa
-            </button>
-
-            {/* YK Üyeleri button */}
-            <button
-              onClick={() => router.push('/yk-uyeleri')}
-              className="flex items-center gap-1.5 px-3 py-1.5 text-[11px] rounded-lg font-medium bg-slate-100 text-slate-500 hover:text-slate-700 transition-colors"
-            >
-              <Users size={12} /> YK Üyeleri
-            </button>
-
-            {/* Yeni YK Üyesi - Sadece YK Başkanı için */}
-            {isYK && (
+            {/* Masaüstünde gösterilecekler */}
+            <div className="hidden md:flex items-center gap-2">
+              {/* Home button */}
               <button
-                onClick={() => { setEditingProfile(null); setShowProfileModal(true) }}
-                className="flex items-center gap-1.5 px-3 py-1.5 text-[11px] rounded-lg font-medium bg-green-100 text-green-700 hover:bg-green-200 transition-colors"
+                onClick={() => setView('anasayfa')}
+                className={`flex items-center gap-1.5 px-3 py-1.5 text-[11px] rounded-lg font-medium transition-colors ${
+                  view === 'anasayfa' ? 'bg-indigo-600 text-white' : 'bg-slate-100 text-slate-500 hover:text-slate-700'
+                }`}
               >
-                <Plus size={12} /> Yeni Üye
+                <Home size={12} /> Ana Sayfa
               </button>
-            )}
 
-            {/* View switcher */}
-            <div className="flex bg-slate-100 rounded-lg p-0.5">
-              {([
-                { v: 'kanban', icon: LayoutGrid, label: 'Kanban' },
-                { v: 'gantt', icon: BarChart2, label: 'Gantt' },
-                { v: 'takvim', icon: Calendar, label: 'Takvim' },
-              ] as const).map(({ v, icon: Icon, label }) => (
+              {/* YK Üyeleri button */}
+              <button
+                onClick={() => router.push('/yk-uyeleri')}
+                className="flex items-center gap-1.5 px-3 py-1.5 text-[11px] rounded-lg font-medium bg-slate-100 text-slate-500 hover:text-slate-700 transition-colors"
+              >
+                <Users size={12} /> YK Üyeleri
+              </button>
+
+              {/* Yeni YK Üyesi - Sadece YK Başkanı için */}
+              {isYK && (
                 <button
-                  key={v}
-                  onClick={() => { if (!activeWsId && workspaces.length) setActiveWsId(workspaces[0].id); setView(v) }}
-                  className={`flex items-center gap-1.5 px-3 py-1.5 text-[11px] rounded-md font-medium transition-colors ${
-                    view === v ? 'bg-white text-slate-800 shadow-sm' : 'text-slate-500 hover:text-slate-700'
-                  }`}
+                  onClick={() => { setEditingProfile(null); setShowProfileModal(true) }}
+                  className="flex items-center gap-1.5 px-3 py-1.5 text-[11px] rounded-lg font-medium bg-green-100 text-green-700 hover:bg-green-200 transition-colors"
                 >
-                  <Icon size={12} /> {label}
+                  <Plus size={12} /> Yeni Üye
                 </button>
-              ))}
+              )}
+
+              {/* View switcher */}
+              <div className="flex bg-slate-100 rounded-lg p-0.5">
+                {([
+                  { v: 'kanban', icon: LayoutGrid, label: 'Kanban' },
+                  { v: 'gantt', icon: BarChart2, label: 'Gantt' },
+                  { v: 'takvim', icon: Calendar, label: 'Takvim' },
+                ] as const).map(({ v, icon: Icon, label }) => (
+                  <button
+                    key={v}
+                    onClick={() => { if (!activeWsId && workspaces.length) setActiveWsId(workspaces[0].id); setView(v) }}
+                    className={`flex items-center gap-1.5 px-3 py-1.5 text-[11px] rounded-md font-medium transition-colors ${
+                      view === v ? 'bg-white text-slate-800 shadow-sm' : 'text-slate-500 hover:text-slate-700'
+                    }`}
+                  >
+                    <Icon size={12} /> {label}
+                  </button>
+                ))}
+              </div>
             </div>
 
             {canEdit && view !== 'anasayfa' && (
@@ -257,7 +278,7 @@ export default function Dashboard() {
                 onClick={() => openTaskModal(null)}
                 className="flex items-center gap-1.5 px-3 py-1.5 bg-indigo-600 text-white text-xs font-medium rounded-lg hover:bg-indigo-700"
               >
-                <Plus size={13} /> Görev
+                <Plus size={13} /> <span className="hidden sm:inline">Görev</span>
               </button>
             )}
 
@@ -274,7 +295,7 @@ export default function Dashboard() {
         </div>
 
         {/* Content */}
-        <div className="flex-1 overflow-auto p-5">
+        <div className="flex-1 overflow-auto p-5 pb-20 md:pb-5">
           {view === 'anasayfa' && profile && (
             <>
               {isYK && <YKUyeCard />}
@@ -458,6 +479,42 @@ export default function Dashboard() {
         editProfile={editingProfile}
         isCreateMode={!editingProfile && isYK}
       />
+
+      {/* Mobil Alt Navigasyon */}
+      <div className="md:hidden fixed bottom-0 left-0 right-0 bg-white border-t border-slate-200 flex z-40 safe-area-pb">
+        {([
+          { v: 'anasayfa', icon: Home, label: 'Ana Sayfa' },
+          { v: 'kanban',   icon: LayoutGrid, label: 'Tahta' },
+          { v: 'gantt',    icon: BarChart2,  label: 'Gantt' },
+          { v: 'takvim',   icon: Calendar,   label: 'Takvim' },
+        ] as const).map(({ v, icon: Icon, label }) => (
+          <button
+            key={v}
+            onClick={() => {
+              if (v !== 'anasayfa' && !activeWsId && workspaces.length) setActiveWsId(workspaces[0].id)
+              setView(v)
+            }}
+            className={`flex-1 flex flex-col items-center py-2.5 gap-1 text-[10px] font-medium transition-colors ${
+              view === v ? 'text-indigo-600' : 'text-slate-400'
+            }`}
+          >
+            <Icon size={20} strokeWidth={view === v ? 2.5 : 1.5} />
+            {label}
+          </button>
+        ))}
+        {totalUnread > 0 && (
+          <button
+            onClick={() => setShowNotif(!showNotif)}
+            className="flex-1 flex flex-col items-center py-2.5 gap-1 text-[10px] font-medium text-slate-400 relative"
+          >
+            <div className="relative">
+              <Bell size={20} strokeWidth={1.5} />
+              <span className="absolute -top-1 -right-1 w-2 h-2 bg-red-500 rounded-full" />
+            </div>
+            Bildirim
+          </button>
+        )}
+      </div>
     </div>
   )
 }

@@ -1,13 +1,119 @@
 'use client'
 
 import { useState, useRef } from 'react'
-import { X, Trash2, Plus, ExternalLink, Send, RefreshCw, ImageIcon } from 'lucide-react'
+import { X, Trash2, Plus, ExternalLink, Send, RefreshCw, ImageIcon, Check, UserPlus } from 'lucide-react'
 import toast from 'react-hot-toast'
-import type { Task, Label, Profile } from '@/types'
+import type { Task, Label, Profile, ChecklistItem } from '@/types'
 import { STATUS_LABELS, PRIORITY_LABELS, PRIORITY_COLORS, COVER_PATTERNS, lightenColor } from '@/lib/constants'
 import { useAuth } from '@/hooks/useAuth'
 import { formatDate } from '@/lib/constants'
 import { createBrowserClient } from '@/lib/supabase'
+import { useChecklists } from '@/hooks/useChecklists'
+
+// ─── Checklist Row ────────────────────────────────────────────────────────────
+
+interface ChecklistRowProps {
+  item: ChecklistItem
+  members: Profile[]
+  onToggle: (id: string, val: boolean) => void
+  onAssign: (id: string, userId: string | null) => void
+  onDelete: (id: string) => void
+  onUpdateTitle: (id: string, title: string) => void
+}
+
+function ChecklistRow({ item, members, onToggle, onAssign, onDelete, onUpdateTitle }: ChecklistRowProps) {
+  const [editing, setEditing] = useState(false)
+  const [titleVal, setTitleVal] = useState(item.title)
+  const [showMenu, setShowMenu] = useState(false)
+
+  const commitTitle = () => {
+    if (titleVal.trim()) onUpdateTitle(item.id, titleVal)
+    else setTitleVal(item.title)
+    setEditing(false)
+  }
+
+  return (
+    <div className="flex items-center gap-2 group px-2 py-1.5 rounded-lg hover:bg-slate-50">
+      <button
+        onClick={() => onToggle(item.id, !item.is_completed)}
+        className={`w-4 h-4 rounded border flex-shrink-0 flex items-center justify-center transition-colors ${
+          item.is_completed ? 'bg-indigo-600 border-indigo-600' : 'border-slate-300 hover:border-indigo-400'
+        }`}
+      >
+        {item.is_completed && <Check size={10} className="text-white" />}
+      </button>
+
+      {editing ? (
+        <input
+          autoFocus
+          className="flex-1 text-xs bg-transparent border-b border-indigo-300 outline-none py-0.5"
+          value={titleVal}
+          onChange={e => setTitleVal(e.target.value)}
+          onBlur={commitTitle}
+          onKeyDown={e => {
+            if (e.key === 'Enter') commitTitle()
+            if (e.key === 'Escape') { setTitleVal(item.title); setEditing(false) }
+          }}
+        />
+      ) : (
+        <span
+          className={`flex-1 text-xs cursor-pointer ${item.is_completed ? 'line-through text-slate-400' : 'text-slate-700'}`}
+          onClick={() => setEditing(true)}
+        >
+          {item.title}
+        </span>
+      )}
+
+      {/* Assignee */}
+      <div className="relative flex-shrink-0">
+        <button
+          onClick={() => setShowMenu(!showMenu)}
+          className={`w-5 h-5 rounded-full text-[8px] font-bold flex items-center justify-center transition-opacity ${
+            item.assigned_profile
+              ? 'bg-indigo-100 text-indigo-700 opacity-100'
+              : 'bg-slate-100 text-slate-400 opacity-0 group-hover:opacity-100'
+          }`}
+          title={item.assigned_profile?.full_name || 'Kişi ata'}
+        >
+          {item.assigned_profile ? item.assigned_profile.initials : <UserPlus size={9} />}
+        </button>
+        {showMenu && (
+          <div className="absolute right-0 top-6 bg-white border border-slate-200 rounded-xl shadow-lg z-20 w-44 py-1 max-h-48 overflow-y-auto">
+            {item.assigned_to && (
+              <button
+                onClick={() => { onAssign(item.id, null); setShowMenu(false) }}
+                className="w-full text-left px-3 py-1.5 text-xs text-slate-400 hover:bg-slate-50"
+              >
+                Atamayı kaldır
+              </button>
+            )}
+            {members.map(m => (
+              <button
+                key={m.id}
+                onClick={() => { onAssign(item.id, m.id); setShowMenu(false) }}
+                className={`w-full text-left px-3 py-1.5 text-xs hover:bg-slate-50 flex items-center gap-2 ${m.id === item.assigned_to ? 'text-indigo-600 font-medium' : 'text-slate-700'}`}
+              >
+                <span className="w-5 h-5 rounded-full bg-indigo-100 text-indigo-700 text-[8px] font-bold flex items-center justify-center flex-shrink-0">
+                  {m.initials}
+                </span>
+                <span className="truncate">{m.full_name}</span>
+              </button>
+            ))}
+          </div>
+        )}
+      </div>
+
+      <button
+        onClick={() => onDelete(item.id)}
+        className="opacity-0 group-hover:opacity-100 text-slate-300 hover:text-red-400 flex-shrink-0 transition-opacity"
+      >
+        <X size={12} />
+      </button>
+    </div>
+  )
+}
+
+// ─── Modal ────────────────────────────────────────────────────────────────────
 
 interface TaskModalProps {
   task: Task | null
@@ -49,6 +155,8 @@ export default function TaskModal({
   const [driveName, setDriveName] = useState('')
   const [saving, setSaving] = useState(false)
   const [localLabelNames, setLocalLabelNames] = useState<Record<number, string>>({})
+  const [newChecklistTitle, setNewChecklistTitle] = useState('')
+  const { items: checklistItems, addItem: addChecklistItem, toggleItem, updateTitle: updateChecklistTitle, assignItem, deleteItem: deleteChecklistItem } = useChecklists(task?.id || null)
 
   const bg = lightenColor(wsColor)
   const coverSvg = COVER_PATTERNS[coverPattern % COVER_PATTERNS.length](bg, wsColor)
@@ -218,6 +326,68 @@ export default function TaskModal({
                 value={desc}
                 onChange={e => setDesc(e.target.value)}
               />
+            </div>
+
+            {/* Checklist */}
+            <div className="mb-5">
+              <div className="flex items-center justify-between mb-2">
+                <p className="text-[10px] font-bold text-slate-400 tracking-widest">ALT GÖREVLER</p>
+                {task && checklistItems.length > 0 && (
+                  <span className="text-[10px] text-slate-400">
+                    {checklistItems.filter(i => i.is_completed).length}/{checklistItems.length} tamamlandı
+                  </span>
+                )}
+              </div>
+              {!task ? (
+                <p className="text-xs text-slate-400 italic">Görevi kaydettikten sonra alt görev ekleyebilirsiniz.</p>
+              ) : (
+                <>
+                  {checklistItems.length > 0 && (
+                    <div className="mb-3">
+                      <div className="w-full bg-slate-200 rounded-full h-1.5">
+                        <div
+                          className="bg-indigo-500 h-1.5 rounded-full transition-all duration-300"
+                          style={{ width: `${(checklistItems.filter(i => i.is_completed).length / checklistItems.length) * 100}%` }}
+                        />
+                      </div>
+                    </div>
+                  )}
+                  <div className="space-y-0.5 mb-2">
+                    {checklistItems.map(item => (
+                      <ChecklistRow
+                        key={item.id}
+                        item={item}
+                        members={members}
+                        onToggle={toggleItem}
+                        onAssign={assignItem}
+                        onDelete={deleteChecklistItem}
+                        onUpdateTitle={updateChecklistTitle}
+                      />
+                    ))}
+                  </div>
+                  <div className="flex gap-2">
+                    <input
+                      className="flex-1 text-xs px-3 py-2 border border-slate-200 rounded-lg outline-none focus:border-indigo-300"
+                      placeholder="Alt görev ekle..."
+                      value={newChecklistTitle}
+                      onChange={e => setNewChecklistTitle(e.target.value)}
+                      onKeyDown={e => {
+                        if (e.key === 'Enter') {
+                          addChecklistItem(newChecklistTitle)
+                          setNewChecklistTitle('')
+                        }
+                      }}
+                    />
+                    <button
+                      onClick={() => { addChecklistItem(newChecklistTitle); setNewChecklistTitle('') }}
+                      disabled={!newChecklistTitle.trim()}
+                      className="px-3 py-2 bg-slate-100 text-slate-700 rounded-lg hover:bg-slate-200 disabled:opacity-40 text-xs"
+                    >
+                      <Plus size={14} />
+                    </button>
+                  </div>
+                </>
+              )}
             </div>
 
             {/* Labels */}

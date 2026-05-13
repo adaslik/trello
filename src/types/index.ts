@@ -94,6 +94,18 @@ export interface Task {
   updated_at: string
 }
 
+export interface ChecklistItem {
+  id: string
+  task_id: string
+  title: string
+  is_completed: boolean
+  assigned_to: string | null
+  assigned_profile?: { full_name: string; initials: string } | null
+  position: number
+  created_by: string | null
+  created_at: string
+}
+
 export interface Notification {
   id: string
   user_id: string
