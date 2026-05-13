@@ -59,12 +59,9 @@ export default function LoginPage() {
     <div className="min-h-screen bg-slate-50 flex items-center justify-center p-4">
       <div className="bg-white rounded-2xl shadow-sm border border-slate-200 w-full max-w-sm overflow-hidden">
         {/* Header */}
-        <div className="bg-indigo-600 px-8 py-8 text-white">
-          <div className="w-10 h-10 bg-white/20 rounded-xl flex items-center justify-center mb-4">
-            <span className="text-xl">🏛</span>
-          </div>
-          <h1 className="text-xl font-semibold">Meslek Odası</h1>
-          <p className="text-indigo-200 text-sm mt-1">Görev Yönetim Sistemi</p>
+        <div className="bg-white px-8 py-6 border-b border-slate-200 flex flex-col items-center">
+          <img src="/logo.jpg" alt="TMMOB Makina Mühendisleri Odası Kocaeli Şubesi" className="h-20 object-contain mb-4" />
+          <p className="text-slate-500 text-sm">Görev Yönetim Sistemi</p>
         </div>
 
         <div className="p-8">
