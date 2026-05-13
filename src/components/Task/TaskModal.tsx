@@ -305,10 +305,10 @@ export default function TaskModal({
         </div>
 
         {/* Body */}
-        <div className="flex flex-1 min-h-0">
+        <div className="flex flex-col md:flex-row flex-1 min-h-0">
 
           {/* Left */}
-          <div className="flex-1 p-6 overflow-y-auto max-h-[520px] border-r border-slate-100">
+          <div className="flex-1 p-6 overflow-y-auto md:max-h-[520px] border-b md:border-b-0 md:border-r border-slate-100">
             <input
               className="w-full text-xl font-semibold text-slate-800 border-none outline-none placeholder-slate-300 mb-5 bg-transparent"
               placeholder="Görev başlığı..."
@@ -500,7 +500,7 @@ export default function TaskModal({
           </div>
 
           {/* Right sidebar */}
-          <div className="w-56 p-4 bg-slate-50 flex-shrink-0 space-y-4 overflow-y-auto max-h-[520px]">
+          <div className="w-full md:w-56 p-4 bg-slate-50 flex-shrink-0 space-y-4 overflow-y-auto md:max-h-[520px]">
             <div>
               <p className="text-[9px] font-bold text-slate-400 tracking-widest mb-1.5">DURUM</p>
               <select
