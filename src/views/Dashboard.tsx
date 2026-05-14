@@ -16,6 +16,7 @@ import { useAuth } from '@/hooks/useAuth'
 import { useWorkspaces } from '@/hooks/useWorkspaces'
 import { useTasks } from '@/hooks/useTasks'
 import { useAssignedTasks } from '@/hooks/useAssignedTasks'
+import { useAssignedChecklists } from '@/hooks/useAssignedChecklists'
 import { createBrowserClient } from '@/lib/supabase'
 import { WORKSPACE_COLORS, CAT_LABELS, canEditWorkspace } from '@/lib/constants'
 import type { Task, Workspace, Profile } from '@/types'
@@ -31,6 +32,7 @@ export default function Dashboard() {
   const [activeWsId, setActiveWsId] = useState<string | null>(null)
   const { tasks, createTask, updateTask, deleteTask, moveTask } = useTasks(activeWsId)
   const { tasks: assignedTasks, updateTask: updateAssignedTask } = useAssignedTasks()
+  const { items: assignedChecklists } = useAssignedChecklists()
   const [view, setView] = useState<View>('anasayfa')
   const [taskModalOpen, setTaskModalOpen] = useState(false)
   const [editingTask, setEditingTask] = useState<Task | null>(null)
@@ -106,6 +108,16 @@ export default function Dashboard() {
     setEditFromAssigned(true)
     setEditingTask(task)
     setTaskModalOpen(true)
+  }
+
+  const openChecklistTask = async (taskId: string, workspaceId: string) => {
+    if (!labels[workspaceId]) await fetchLabels(workspaceId)
+    const { data } = await supabase.from('tasks').select('*').eq('id', taskId).single()
+    if (data) {
+      setEditFromAssigned(true)
+      setEditingTask(data as Task)
+      setTaskModalOpen(true)
+    }
   }
 
   const handleSaveTask = async (data: Partial<Task>) => {
@@ -376,8 +388,10 @@ export default function Dashboard() {
                 profile={profile}
                 notifications={notifications}
                 assignedTasks={assignedTasks}
+                assignedChecklists={assignedChecklists}
                 onSelectWs={selectWsFromHome}
                 onAssignedTaskClick={openAssignedTask}
+                onAssignedChecklistClick={openChecklistTask}
               />
             </>
           )}
