@@ -13,10 +13,11 @@ interface ProfileEditModalProps {
   onClose: () => void
   editProfile?: Profile | null
   isCreateMode?: boolean
+  workerMode?: boolean
 }
 
 export default function ProfileEditModal(props: ProfileEditModalProps) {
-  const { isOpen, onClose, editProfile, isCreateMode } = props
+  const { isOpen, onClose, editProfile, isCreateMode, workerMode } = props
   const router = useRouter()
   const { profile: currentUser, updateProfile } = useAuth()
   const [loading, setLoading] = useState(false)
@@ -49,7 +50,7 @@ export default function ProfileEditModal(props: ProfileEditModalProps) {
         telefon: '',
         web_sayfasi: '',
         kimdir: '',
-        role: 'yk_uyesi',
+        role: workerMode ? 'calisan' : 'yk_uyesi',
       })
     } else if (targetProfile) {
       setForm({
@@ -148,7 +149,7 @@ export default function ProfileEditModal(props: ProfileEditModalProps) {
                 </button>
               )}
               <h2 className="text-xl font-bold text-gray-900">
-                {isCreateMode ? 'Yeni YK Üyesi Oluştur' : isEditingOther ? form.full_name + ' - Düzenle' : 'Profilini Düzenle'}
+                {isCreateMode ? (workerMode ? 'Yeni Çalışan Oluştur' : 'Yeni YK Üyesi Oluştur') : isEditingOther ? form.full_name + ' - Düzenle' : 'Profilini Düzenle'}
               </h2>
             </div>
             <button onClick={onClose} className="text-gray-400 hover:text-gray-600">
@@ -190,12 +191,22 @@ export default function ProfileEditModal(props: ProfileEditModalProps) {
                   onChange={(e) => setForm({ ...form, role: e.target.value as UserRole })}
                   className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-indigo-500"
                 >
-                  <option value="yk_uyesi">YK Üyesi</option>
-                  <option value="yk_baskani">YK Başkanı</option>
-                  <option value="yk_baskan_vekili">YK Başkan Vekili</option>
-                  <option value="yk_sekreteri">YK Sekreteri</option>
-                  <option value="yk_it_sorumlusu">YK IT Sorumlusu</option>
-                  <option value="yk_saymani">YK Saymanı</option>
+                  {workerMode ? (
+                    <>
+                      <option value="calisan">Çalışan</option>
+                      <option value="komisyon_baskani">Komisyon Başkanı</option>
+                      <option value="temsilci">Temsilci</option>
+                    </>
+                  ) : (
+                    <>
+                      <option value="yk_uyesi">YK Üyesi</option>
+                      <option value="yk_baskani">YK Başkanı</option>
+                      <option value="yk_baskan_vekili">YK Başkan Vekili</option>
+                      <option value="yk_sekreteri">YK Sekreteri</option>
+                      <option value="yk_it_sorumlusu">YK IT Sorumlusu</option>
+                      <option value="yk_saymani">YK Saymanı</option>
+                    </>
+                  )}
                 </select>
               </div>
             )}

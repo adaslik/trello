@@ -425,6 +425,14 @@ export default function Dashboard() {
                 <Users size={12} /> YK Üyeleri
               </button>
 
+              {/* Çalışanlar button */}
+              <button
+                onClick={() => router.push('/calisanlar')}
+                className="flex items-center gap-1.5 px-3 py-1.5 text-[11px] rounded-lg font-medium bg-slate-100 text-slate-500 hover:text-slate-700 transition-colors"
+              >
+                <Users size={12} /> Çalışanlar
+              </button>
+
               {/* Yeni YK Üyesi - Sadece YK Başkanı için */}
               {isYK && (
                 <button
@@ -516,6 +524,12 @@ export default function Dashboard() {
                         className="w-full text-left flex items-center gap-2 px-4 py-2 text-xs text-slate-700 hover:bg-slate-50"
                       >
                         <Users size={13} /> YK Üyeleri
+                      </button>
+                      <button
+                        onClick={() => { router.push('/calisanlar'); setShowMobileMenu(false) }}
+                        className="w-full text-left flex items-center gap-2 px-4 py-2 text-xs text-slate-700 hover:bg-slate-50"
+                      >
+                        <Users size={13} /> Çalışanlar
                       </button>
                       <button
                         onClick={() => { setEditingProfile(null); setShowProfileModal(true); setShowMobileMenu(false) }}
