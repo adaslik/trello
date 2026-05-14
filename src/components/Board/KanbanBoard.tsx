@@ -7,7 +7,7 @@ import {
 } from '@dnd-kit/core'
 import { SortableContext, verticalListSortingStrategy, useSortable } from '@dnd-kit/sortable'
 import { CSS } from '@dnd-kit/utilities'
-import { Plus, GripVertical, Check, X } from 'lucide-react'
+import { Plus, Check, X } from 'lucide-react'
 import type { Task, Label } from '@/types'
 import { STATUS_LABELS, PRIORITY_LABELS, PRIORITY_COLORS, COVER_PATTERNS, lightenColor } from '@/lib/constants'
 
@@ -36,10 +36,11 @@ function KanbanCard({ task, labels, wsColor, onClick }: KanbanCardProps) {
       ref={setNodeRef}
       style={style}
       {...attributes}
-      className="bg-white border border-slate-200 rounded-xl mb-2 overflow-hidden hover:border-slate-300 hover:shadow-sm transition-all"
+      {...listeners}
+      className="bg-white border border-slate-200 rounded-xl mb-2 overflow-hidden hover:border-slate-300 shadow-sm hover:shadow-md transition-all cursor-grab active:cursor-grabbing"
     >
-      {/* Cover area with grip handle */}
-      <div className="relative">
+      {/* Cover area */}
+      <div>
         {task.cover_image_url ? (
           <img
             src={task.cover_image_url}
@@ -56,18 +57,10 @@ function KanbanCard({ task, labels, wsColor, onClick }: KanbanCardProps) {
             }}
           />
         )}
-        {/* Drag grip — only this element initiates drag */}
-        <div
-          {...listeners}
-          className="absolute top-1 right-1 p-1 rounded bg-white/60 text-slate-500 cursor-grab active:cursor-grabbing hover:bg-white/90"
-          title="Taşımak için sürükle"
-        >
-          <GripVertical size={11} />
-        </div>
       </div>
 
       {/* Card body — click opens modal */}
-      <div className="p-2.5 cursor-pointer" onClick={onClick}>
+      <div className="p-2.5" onClick={onClick}>
         {taskLabels.length > 0 && (
           <div className="flex gap-1 flex-wrap mb-1.5">
             {taskLabels.map(l => (
