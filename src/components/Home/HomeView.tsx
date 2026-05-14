@@ -1,6 +1,7 @@
 'use client'
 
 import { useState, useEffect } from 'react'
+import { X } from 'lucide-react'
 import { createBrowserClient } from '@/lib/supabase'
 import { PRIORITY_COLORS, PRIORITY_LABELS, ROLE_LABELS, formatDate } from '@/lib/constants'
 import type { Workspace, Profile, Task } from '@/types'
@@ -21,6 +22,7 @@ export default function HomeView({ workspaces, profile, notifications, assignedT
   const supabase = createBrowserClient()
   const [tasks, setTasks] = useState<Task[]>([])
   const [loading, setLoading] = useState(true)
+  const [kpiPanel, setKpiPanel] = useState<{ label: string; tasks: Task[] } | null>(null)
 
   useEffect(() => {
     if (!workspaces.length) { setLoading(false); return }
@@ -128,18 +130,22 @@ export default function HomeView({ workspaces, profile, notifications, assignedT
       {/* ── KPI Cards ── */}
       <div className="grid grid-cols-2 sm:grid-cols-4 gap-3">
         {[
-          { label: 'Toplam Görev',  value: total,      icon: '📋', bg: 'bg-slate-50',   border: 'border-slate-200',  text: 'text-slate-700'   },
-          { label: 'Tamamlanan',    value: completed,   icon: '✅', bg: 'bg-emerald-50', border: 'border-emerald-200',text: 'text-emerald-700' },
-          { label: 'Devam Eden',    value: inProgress,  icon: '🔄', bg: 'bg-indigo-50',  border: 'border-indigo-200', text: 'text-indigo-700'  },
-          { label: 'Geciken',       value: overdue,     icon: '⚠️', bg: 'bg-red-50',     border: 'border-red-200',    text: 'text-red-600'     },
+          { label: 'Toplam Görev', value: total,     icon: '📋', bg: 'bg-slate-50',   border: 'border-slate-200',   text: 'text-slate-700',   getTasks: () => tasks },
+          { label: 'Tamamlanan',   value: completed,  icon: '✅', bg: 'bg-emerald-50', border: 'border-emerald-200', text: 'text-emerald-700', getTasks: () => tasks.filter(t => t.status === 'tamamlandi') },
+          { label: 'Devam Eden',   value: inProgress, icon: '🔄', bg: 'bg-indigo-50',  border: 'border-indigo-200',  text: 'text-indigo-700',  getTasks: () => tasks.filter(t => t.status === 'devam_ediyor') },
+          { label: 'Geciken',      value: overdue,    icon: '⚠️', bg: 'bg-red-50',     border: 'border-red-200',     text: 'text-red-600',     getTasks: () => tasks.filter(t => t.end_date && new Date(t.end_date) < today && t.status !== 'tamamlandi') },
         ].map(c => (
-          <div key={c.label} className={`${c.bg} border ${c.border} rounded-2xl p-4`}>
+          <button
+            key={c.label}
+            onClick={() => setKpiPanel({ label: c.label, tasks: c.getTasks() })}
+            className={`${c.bg} border ${c.border} rounded-2xl p-4 text-left transition-all hover:shadow-md hover:scale-[1.02] active:scale-100`}
+          >
             <div className="flex items-start justify-between">
               <span className="text-2xl">{c.icon}</span>
               <span className={`text-3xl font-black leading-none ${c.text}`}>{c.value}</span>
             </div>
             <p className="text-xs font-semibold text-slate-500 mt-3">{c.label}</p>
-          </div>
+          </button>
         ))}
       </div>
 
@@ -482,6 +488,79 @@ export default function HomeView({ workspaces, profile, notifications, assignedT
           )}
         </div>
       </div>
+
+      {/* ── KPI Panel Modal ── */}
+      {kpiPanel && (
+        <div
+          className="fixed inset-0 z-50 flex items-start justify-center pt-16 px-4"
+          onClick={() => setKpiPanel(null)}
+        >
+          <div className="absolute inset-0 bg-black/30 backdrop-blur-sm" />
+          <div
+            className="relative bg-white rounded-2xl shadow-2xl w-full max-w-lg max-h-[70vh] flex flex-col"
+            onClick={e => e.stopPropagation()}
+          >
+            {/* Header */}
+            <div className="flex items-center justify-between px-5 py-4 border-b border-slate-100">
+              <h2 className="text-sm font-bold text-slate-800">{kpiPanel.label}</h2>
+              <div className="flex items-center gap-3">
+                <span className="text-xs text-slate-400">{kpiPanel.tasks.length} görev</span>
+                <button
+                  onClick={() => setKpiPanel(null)}
+                  className="p-1.5 rounded-lg hover:bg-slate-100 text-slate-400 hover:text-slate-600 transition-colors"
+                >
+                  <X size={15} />
+                </button>
+              </div>
+            </div>
+            {/* List */}
+            <div className="overflow-y-auto flex-1 p-3">
+              {kpiPanel.tasks.length === 0 ? (
+                <div className="flex flex-col items-center justify-center py-12 text-center">
+                  <span className="text-3xl mb-2">🎉</span>
+                  <p className="text-sm text-slate-400">Bu kategoride görev yok</p>
+                </div>
+              ) : (
+                <div className="space-y-1">
+                  {kpiPanel.tasks.map(task => {
+                    const ws  = workspaces.find(w => w.id === task.workspace_id)
+                    const pri = PRIORITY_COLORS[task.priority as keyof typeof PRIORITY_COLORS] ?? PRIORITY_COLORS.orta
+                    const isOverdue = task.end_date && new Date(task.end_date) < today && task.status !== 'tamamlandi'
+                    return (
+                      <button
+                        key={task.id}
+                        onClick={() => { setKpiPanel(null); onSelectWs(task.workspace_id) }}
+                        className="w-full flex items-center gap-3 p-3 rounded-xl hover:bg-slate-50 text-left transition-colors border border-transparent hover:border-slate-100"
+                      >
+                        <div className="w-2.5 h-2.5 rounded-full flex-shrink-0" style={{ background: ws?.color || '#6366f1' }} />
+                        <div className="flex-1 min-w-0">
+                          <p className="text-sm font-medium text-slate-700 truncate">{task.title}</p>
+                          <p className="text-[10px] text-slate-400 mt-0.5">{ws?.name}</p>
+                        </div>
+                        <div className="flex items-center gap-2 flex-shrink-0">
+                          {task.end_date && (
+                            <span className={`text-[10px] font-medium px-1.5 py-0.5 rounded-full ${
+                              isOverdue ? 'bg-red-100 text-red-600' : 'bg-slate-100 text-slate-500'
+                            }`}>
+                              {formatDate(task.end_date)}
+                            </span>
+                          )}
+                          <span
+                            className="text-[10px] font-medium px-1.5 py-0.5 rounded-full"
+                            style={{ background: pri.bg, color: pri.text }}
+                          >
+                            {PRIORITY_LABELS[task.priority as keyof typeof PRIORITY_LABELS] ?? task.priority}
+                          </span>
+                        </div>
+                      </button>
+                    )
+                  })}
+                </div>
+              )}
+            </div>
+          </div>
+        </div>
+      )}
     </div>
   )
 }
