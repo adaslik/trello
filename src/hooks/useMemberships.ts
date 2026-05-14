@@ -16,15 +16,18 @@ export function useMemberships(workspaceId: string | null) {
     const [wm, bm] = await Promise.all([
       supabase
         .from('workspace_memberships')
-        .select('*, profile:profiles(id,full_name,initials,email,avatar_url)')
+        .select('*, profile:profiles!workspace_memberships_user_id_fkey(id,full_name,initials,email,avatar_url)')
         .eq('workspace_id', workspaceId)
         .order('created_at'),
       supabase
         .from('board_memberships')
-        .select('*, profile:profiles(id,full_name,initials,email,avatar_url)')
+        .select('*, profile:profiles!board_memberships_user_id_fkey(id,full_name,initials,email,avatar_url)')
         .eq('workspace_id', workspaceId)
         .order('created_at'),
     ])
+    if (wm.error) console.error('[useMemberships] ws error:', wm.error)
+    if (bm.error) console.error('[useMemberships] board error:', bm.error)
+    console.log('[useMemberships] wsId:', workspaceId, 'wsData:', wm.data, 'bmData:', bm.data)
     if (wm.data) setWsMembers(wm.data as WorkspaceMembership[])
     if (bm.data) setBoardMembers(bm.data as BoardMembership[])
     setLoading(false)
