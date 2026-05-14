@@ -69,12 +69,20 @@ export default function ProfileEditModal(props: ProfileEditModalProps) {
     e.preventDefault()
     setLoading(true)
 
+    // URL normalizasyonu — protokol yoksa https:// ekle
+    const normalizedForm = {
+      ...form,
+      web_sayfasi: form.web_sayfasi
+        ? form.web_sayfasi.startsWith('http') ? form.web_sayfasi : `https://${form.web_sayfasi}`
+        : '',
+    }
+
     try {
       if (isCreateMode && isYKChairman) {
         const res = await fetch('/api/create-member', {
           method: 'POST',
           headers: { 'Content-Type': 'application/json' },
-          body: JSON.stringify(form),
+          body: JSON.stringify(normalizedForm),
         })
         const result = await res.json()
         if (!res.ok) throw new Error(result.error || 'Üye oluşturulamadı')
@@ -83,12 +91,18 @@ export default function ProfileEditModal(props: ProfileEditModalProps) {
         const supabase = createBrowserClient()
         const { error } = await supabase
           .from('profiles')
-          .update(form)
+          .update(normalizedForm)
           .eq('id', editProfile.id)
         if (error) throw error
         toast.success('Profil güncellendi')
       } else {
-        await updateProfile(form)
+        const supabase = createBrowserClient()
+        const { error } = await supabase
+          .from('profiles')
+          .update(normalizedForm)
+          .eq('id', currentUser!.id)
+        if (error) throw error
+        await updateProfile(normalizedForm)
         toast.success('Profil güncellendi')
       }
 
@@ -227,10 +241,10 @@ export default function ProfileEditModal(props: ProfileEditModalProps) {
                 <Globe size={14} className="inline mr-1" />Web Sayfası
               </label>
               <input
-                type="url"
+                type="text"
                 value={form.web_sayfasi}
                 onChange={(e) => setForm({ ...form, web_sayfasi: e.target.value })}
-                placeholder="https://ornek.com"
+                placeholder="ornek.com"
                 className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-indigo-500"
               />
             </div>

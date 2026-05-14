@@ -314,7 +314,7 @@ export default function YKUyelerPage() {
         {/* Profile Edit Modal */}
         <ProfileEditModal
           isOpen={showProfileModal}
-          onClose={() => { setShowProfileModal(false); setEditingProfile(null) }}
+          onClose={() => { setShowProfileModal(false); setEditingProfile(null); setSelectedMember(null); fetchMembers() }}
           editProfile={editingProfile}
         />
 
