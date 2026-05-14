@@ -1,7 +1,7 @@
 'use client'
 
 import { useState, useEffect, useCallback } from 'react'
-import { Bell, Plus, Settings, LayoutGrid, BarChart2, Calendar, Home, Users, LogOut, User, Menu, X as XIcon } from 'lucide-react'
+import { Bell, Plus, Settings, LayoutGrid, BarChart2, Calendar, Home, Users, LogOut, User, Menu, X as XIcon, Shield, Eye } from 'lucide-react'
 import { useRouter } from 'next/navigation'
 import Sidebar from '@/components/Layout/Sidebar'
 import KanbanBoard from '@/components/Board/KanbanBoard'
@@ -9,6 +9,7 @@ import GanttView from '@/components/Gantt/GanttView'
 import CalendarView from '@/components/Calendar/CalendarView'
 import TaskModal from '@/components/Task/TaskModal'
 import HomeView from '@/components/Home/HomeView'
+import MembersModal from '@/components/Workspace/MembersModal'
 import YKUyeCard from '@/components/Profile/YKUyeCard'
 import JoinRequestCard from '@/components/JoinRequest/JoinRequestCard'
 import ProfileEditModal from '@/components/Profile/ProfileEditModal'
@@ -17,6 +18,7 @@ import { useWorkspaces } from '@/hooks/useWorkspaces'
 import { useTasks } from '@/hooks/useTasks'
 import { useAssignedTasks } from '@/hooks/useAssignedTasks'
 import { useAssignedChecklists } from '@/hooks/useAssignedChecklists'
+import { useMemberships } from '@/hooks/useMemberships'
 import { createBrowserClient } from '@/lib/supabase'
 import { WORKSPACE_COLORS, CAT_LABELS, canEditWorkspace, STATUS_LABELS, PRIORITY_LABELS } from '@/lib/constants'
 import type { Task, Workspace, Profile } from '@/types'
@@ -46,12 +48,20 @@ export default function Dashboard() {
   const [showProfileModal, setShowProfileModal] = useState(false)
   const [editingProfile, setEditingProfile] = useState<Profile | null>(null)
   const [showMobileMenu, setShowMobileMenu] = useState(false)
+  const [showYKCard, setShowYKCard] = useState(false)
+  const [showMembersModal, setShowMembersModal] = useState(false)
   const [wsForm, setWsForm] = useState({ name: '', category: 'birim', color: WORKSPACE_COLORS[0], boards: '', access_roles: ['yk_baskani'] as string[], editId: null as string | null, defaultCat: 'birim' })
 
   const activeWs = workspaces.find(w => w.id === activeWsId)
   const wsLabels = activeWsId ? (labels[activeWsId] || []) : []
   const isYK = profile?.role === 'yk_baskani' || profile?.role === 'yk_uyesi'
   const canEdit = profile && activeWs ? canEditWorkspace(profile.role, activeWs.access_roles) : false
+  const { wsMembers, refetch: refetchMembers } = useMemberships(activeWsId)
+  const isBoardAdmin = profile ? (
+    profile.role === 'yk_baskani' || profile.role === 'yk_uyesi' ||
+    wsMembers.some(m => m.user_id === profile.id && m.role === 'admin')
+  ) : false
+  const effectiveCanEdit = canEdit || isBoardAdmin
 
   // Set first workspace on load
   useEffect(() => {
@@ -349,9 +359,46 @@ export default function Dashboard() {
                 <>
                   <div className="w-3 h-3 rounded-sm" style={{ background: activeWs?.color || '#888' }} />
                   <h1 className="text-sm font-semibold text-slate-800">{activeWs?.name || 'Çalışma Alanı'}</h1>
-                  <span className={`text-[10px] px-2 py-0.5 rounded-full ${canEdit ? 'bg-green-100 text-green-700' : 'bg-amber-100 text-amber-700'}`}>
-                    {canEdit ? 'Düzenleyebilirsin' : 'Görüntüle'}
+                  <span className={`text-[10px] px-2 py-0.5 rounded-full ${effectiveCanEdit ? 'bg-green-100 text-green-700' : 'bg-amber-100 text-amber-700'}`}>
+                    {effectiveCanEdit ? 'Düzenleyebilirsin' : 'Görüntüle'}
                   </span>
+                  {activeWs && (
+                    <button
+                      onClick={() => setShowMembersModal(true)}
+                      className="flex items-center gap-1.5 text-[10px] px-2.5 py-1.5 rounded-lg bg-slate-100 text-slate-500 hover:text-slate-700 hover:bg-slate-200 transition-colors"
+                    >
+                      {wsMembers.length > 0 ? (
+                        <div className="flex items-center -space-x-1.5 mr-0.5">
+                          {wsMembers.slice(0, 4).map(m => (
+                            <div
+                              key={m.id}
+                              className="relative"
+                              title={`${m.profile?.full_name || '?'} · ${m.role === 'admin' ? 'Yönetici' : 'Gözlemci'}`}
+                            >
+                              {m.profile?.avatar_url ? (
+                                <img src={m.profile.avatar_url} alt={m.profile.full_name} className="w-5 h-5 rounded-full object-cover ring-1 ring-white" />
+                              ) : (
+                                <div className="w-5 h-5 rounded-full bg-indigo-100 text-indigo-700 text-[8px] font-bold flex items-center justify-center ring-1 ring-white">
+                                  {m.profile?.initials || '?'}
+                                </div>
+                              )}
+                              <span className={`absolute -bottom-0.5 -right-0.5 w-2.5 h-2.5 rounded-full flex items-center justify-center ring-1 ring-white ${m.role === 'admin' ? 'bg-indigo-500' : 'bg-slate-400'}`}>
+                                {m.role === 'admin' ? <Shield size={5} className="text-white" /> : <Eye size={5} className="text-white" />}
+                              </span>
+                            </div>
+                          ))}
+                          {wsMembers.length > 4 && (
+                            <div className="w-5 h-5 rounded-full bg-slate-200 text-slate-600 text-[8px] font-bold flex items-center justify-center ring-1 ring-white">
+                              +{wsMembers.length - 4}
+                            </div>
+                          )}
+                        </div>
+                      ) : (
+                        <Users size={11} />
+                      )}
+                      Üyeler
+                    </button>
+                  )}
                 </>
               )}
             </div>
@@ -408,7 +455,7 @@ export default function Dashboard() {
               </div>
             </div>
 
-            {canEdit && view !== 'anasayfa' && (
+            {effectiveCanEdit && view !== 'anasayfa' && (
               <button
                 onClick={() => openTaskModal(null)}
                 className="flex items-center gap-1.5 px-3 py-1.5 bg-indigo-600 text-white text-xs font-medium rounded-lg hover:bg-indigo-700"
@@ -502,9 +549,7 @@ export default function Dashboard() {
         <div className="flex-1 overflow-auto p-5 pb-20 md:pb-5">
           {view === 'anasayfa' && profile && (
             <>
-              {isYK && <YKUyeCard />}
-              {!isYK && <JoinRequestCard isYK={false} />}
-              {isYK && <JoinRequestCard isYK={true} />}
+              {isYK && showYKCard && <YKUyeCard />}
               <HomeView
                 workspaces={workspaces}
                 profile={profile}
@@ -514,6 +559,9 @@ export default function Dashboard() {
                 onSelectWs={selectWsFromHome}
                 onAssignedTaskClick={openAssignedTask}
                 onAssignedChecklistClick={openChecklistTask}
+                showProfileCard={showYKCard}
+                onToggleProfileCard={isYK ? () => setShowYKCard(v => !v) : undefined}
+                joinRequestNode={<JoinRequestCard isYK={isYK} compact />}
               />
             </>
           )}
@@ -523,7 +571,7 @@ export default function Dashboard() {
               tasks={tasks}
               labels={wsLabels}
               wsColor={activeWs?.color || '#534AB7'}
-              canEdit={!!canEdit}
+              canEdit={!!effectiveCanEdit}
               onTaskClick={task => openTaskModal(task)}
               onAddTask={status => openTaskModal(null, status)}
               onMoveTask={moveTask}
@@ -678,6 +726,15 @@ export default function Dashboard() {
             </div>
           </div>
         </div>
+      )}
+
+      {/* Members Modal */}
+      {showMembersModal && activeWs && (
+        <MembersModal
+          workspace={activeWs}
+          allProfiles={members}
+          onClose={() => { setShowMembersModal(false); refetchMembers() }}
+        />
       )}
 
       {/* Profile Edit Modal */}

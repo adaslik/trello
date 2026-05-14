@@ -1,7 +1,7 @@
 'use client'
 
 import { useState, useEffect } from 'react'
-import { X } from 'lucide-react'
+import { X, ChevronDown, ChevronUp, User } from 'lucide-react'
 import { createBrowserClient } from '@/lib/supabase'
 import { PRIORITY_COLORS, PRIORITY_LABELS, ROLE_LABELS, formatDate } from '@/lib/constants'
 import type { Workspace, Profile, Task } from '@/types'
@@ -16,25 +16,43 @@ interface HomeViewProps {
   onSelectWs: (id: string) => void
   onAssignedTaskClick: (task: Task) => void
   onAssignedChecklistClick: (taskId: string, workspaceId: string) => void
+  showProfileCard?: boolean
+  onToggleProfileCard?: () => void
+  joinRequestNode?: React.ReactNode
 }
 
-export default function HomeView({ workspaces, profile, notifications, assignedTasks, assignedChecklists, onSelectWs, onAssignedTaskClick, onAssignedChecklistClick }: HomeViewProps) {
+export default function HomeView({ workspaces, profile, notifications, assignedTasks, assignedChecklists, onSelectWs, onAssignedTaskClick, onAssignedChecklistClick, showProfileCard, onToggleProfileCard, joinRequestNode }: HomeViewProps) {
   const supabase = createBrowserClient()
   const [tasks, setTasks] = useState<Task[]>([])
   const [loading, setLoading] = useState(true)
   const [kpiPanel, setKpiPanel] = useState<{ label: string; tasks: Task[] } | null>(null)
+  const [wsAdmins, setWsAdmins] = useState<Record<string, { full_name: string; initials: string; avatar_url?: string | null }[]>>({})
 
   useEffect(() => {
     if (!workspaces.length) { setLoading(false); return }
     const wsIds = workspaces.map(w => w.id)
-    supabase
-      .from('tasks')
-      .select('id,title,status,priority,end_date,workspace_id,created_at,assignees')
-      .in('workspace_id', wsIds)
-      .then(({ data }) => {
-        if (data) setTasks(data as Task[])
-        setLoading(false)
-      })
+    Promise.all([
+      supabase
+        .from('tasks')
+        .select('id,title,status,priority,end_date,workspace_id,created_at,assignees')
+        .in('workspace_id', wsIds),
+      supabase
+        .from('workspace_memberships')
+        .select('workspace_id, role, profile:profiles(full_name, initials, avatar_url)')
+        .in('workspace_id', wsIds)
+        .eq('role', 'admin'),
+    ]).then(([tasksRes, adminsRes]) => {
+      if (tasksRes.data) setTasks(tasksRes.data as Task[])
+      if (adminsRes.data) {
+        const grouped: Record<string, { full_name: string; initials: string; avatar_url?: string | null }[]> = {}
+        adminsRes.data.forEach((row: any) => {
+          if (!grouped[row.workspace_id]) grouped[row.workspace_id] = []
+          if (row.profile) grouped[row.workspace_id].push(row.profile)
+        })
+        setWsAdmins(grouped)
+      }
+      setLoading(false)
+    })
   }, [workspaces])
 
   const today = new Date()
@@ -105,25 +123,58 @@ export default function HomeView({ workspaces, profile, notifications, assignedT
     <div className="max-w-6xl mx-auto space-y-5 pb-6">
 
       {/* ── Header ── */}
-      <div className="flex items-start justify-between">
-        <div>
+      <div className="flex items-start justify-between gap-3">
+        <div className="flex-1 min-w-0">
           <h1 className="text-xl font-bold text-slate-800">
             {greeting()}, {profile.full_name.split(' ')[0]}
           </h1>
           <p className="text-sm text-slate-400 mt-0.5 capitalize">{dateStr}</p>
+          {/* Mobil: Profilim butonu greeting altında */}
+          {onToggleProfileCard && (
+            <button
+              onClick={onToggleProfileCard}
+              className="md:hidden mt-3 flex items-center gap-2 px-3 py-2 bg-white border border-slate-200 rounded-xl text-xs font-medium text-slate-600 hover:bg-slate-50 hover:border-slate-300 transition-all shadow-sm"
+            >
+              {profile.avatar_url ? (
+                <img src={profile.avatar_url} alt="" className="w-6 h-6 rounded-full object-cover" />
+              ) : (
+                <div className="w-6 h-6 rounded-full bg-indigo-100 text-indigo-700 text-[9px] font-bold flex items-center justify-center flex-shrink-0">
+                  {profile.initials}
+                </div>
+              )}
+              <span>Profilim</span>
+              {showProfileCard ? <ChevronUp size={13} /> : <ChevronDown size={13} />}
+            </button>
+          )}
         </div>
-        <div className="text-right bg-white border border-slate-200 rounded-2xl px-5 py-3">
-          <p className="text-[10px] font-bold text-slate-400 tracking-widest">TAMAMLANMA ORANI</p>
-          <p className="text-3xl font-black text-indigo-600 leading-none mt-1">%{completionRate}</p>
-          <div className="mt-2 h-1.5 bg-slate-100 rounded-full w-32 overflow-hidden">
-            <div
-              className="h-full bg-indigo-500 rounded-full transition-all"
-              style={{ width: `${completionRate}%` }}
-            />
+        <div className="flex items-start gap-3 flex-shrink-0">
+          {/* Katılma İstekleri widget — completion rate ile yan yana */}
+          {joinRequestNode}
+
+          <div className="text-right bg-white border border-slate-200 rounded-2xl px-5 py-3">
+            <p className="text-[10px] font-bold text-slate-400 tracking-widest">TAMAMLANMA ORANI</p>
+            <p className="text-3xl font-black text-indigo-600 leading-none mt-1">%{completionRate}</p>
+            <div className="mt-2 h-1.5 bg-slate-100 rounded-full w-32 overflow-hidden">
+              <div
+                className="h-full bg-indigo-500 rounded-full transition-all"
+                style={{ width: `${completionRate}%` }}
+              />
+            </div>
+            <p className="text-[10px] text-slate-400 mt-1">
+              {ROLE_LABELS[profile.role]} · {workspaces.length} alan
+            </p>
+            {/* Desktop: Profilim butonu sağ panelin altında */}
+            {onToggleProfileCard && (
+              <button
+                onClick={onToggleProfileCard}
+                className="hidden md:flex items-center gap-1.5 mt-2 ml-auto text-[10px] font-medium text-indigo-600 hover:text-indigo-800 transition-colors"
+              >
+                <User size={10} />
+                Profilim
+                {showProfileCard ? <ChevronUp size={10} /> : <ChevronDown size={10} />}
+              </button>
+            )}
           </div>
-          <p className="text-[10px] text-slate-400 mt-1">
-            {ROLE_LABELS[profile.role]} · {workspaces.length} alan
-          </p>
         </div>
       </div>
 
@@ -357,6 +408,18 @@ export default function HomeView({ workspaces, profile, notifications, assignedT
                           <span className="text-[9px] text-red-500 font-medium">{wsOverdue} gecikmiş</span>
                         )}
                       </div>
+                      {(wsAdmins[ws.id] ?? []).length > 0 && (
+                        <div className="flex items-center gap-1 mt-1.5 flex-wrap">
+                          {(wsAdmins[ws.id] ?? []).slice(0, 3).map((a, i) => (
+                            <span key={i} className="text-[9px] text-indigo-600 bg-indigo-50 px-1.5 py-0.5 rounded-full font-medium truncate max-w-[80px]">
+                              {a.full_name.split(' ')[0]}
+                            </span>
+                          ))}
+                          {(wsAdmins[ws.id] ?? []).length > 3 && (
+                            <span className="text-[9px] text-slate-400">+{(wsAdmins[ws.id] ?? []).length - 3}</span>
+                          )}
+                        </div>
+                      )}
                     </div>
                   </button>
                 )

@@ -129,3 +129,26 @@ export interface Notification {
   is_read: boolean
   created_at: string
 }
+
+export type MembershipRole = 'admin' | 'observer'
+
+export interface WorkspaceMembership {
+  id: string
+  workspace_id: string
+  user_id: string
+  role: MembershipRole
+  invited_by: string | null
+  created_at: string
+  profile?: Pick<Profile, 'id' | 'full_name' | 'initials' | 'email' | 'avatar_url'>
+}
+
+export interface BoardMembership {
+  id: string
+  workspace_id: string
+  board_name: string
+  user_id: string
+  role: MembershipRole
+  invited_by: string | null
+  created_at: string
+  profile?: Pick<Profile, 'id' | 'full_name' | 'initials' | 'email' | 'avatar_url'>
+}
