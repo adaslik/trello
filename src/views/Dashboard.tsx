@@ -18,7 +18,7 @@ import { useTasks } from '@/hooks/useTasks'
 import { useAssignedTasks } from '@/hooks/useAssignedTasks'
 import { useAssignedChecklists } from '@/hooks/useAssignedChecklists'
 import { createBrowserClient } from '@/lib/supabase'
-import { WORKSPACE_COLORS, CAT_LABELS, canEditWorkspace } from '@/lib/constants'
+import { WORKSPACE_COLORS, CAT_LABELS, canEditWorkspace, STATUS_LABELS, PRIORITY_LABELS } from '@/lib/constants'
 import type { Task, Workspace, Profile } from '@/types'
 import toast from 'react-hot-toast'
 
@@ -120,18 +120,140 @@ export default function Dashboard() {
     }
   }
 
+  // Detect changed fields and build activity entries
+  const detectChanges = (old: Task, updates: Partial<Task>) => {
+    if (!profile) return []
+    const base = { user_id: profile.id, user_name: profile.full_name, user_initials: profile.initials }
+    const entries: any[] = []
+
+    if (updates.status !== undefined && updates.status !== old.status)
+      entries.push({ ...base, action_type: 'field_changed', field_name: 'status',
+        old_value: STATUS_LABELS[old.status as keyof typeof STATUS_LABELS] || old.status,
+        new_value: STATUS_LABELS[updates.status as keyof typeof STATUS_LABELS] || updates.status })
+
+    if (updates.priority !== undefined && updates.priority !== old.priority)
+      entries.push({ ...base, action_type: 'field_changed', field_name: 'priority',
+        old_value: PRIORITY_LABELS[old.priority as keyof typeof PRIORITY_LABELS],
+        new_value: PRIORITY_LABELS[updates.priority as keyof typeof PRIORITY_LABELS] })
+
+    if (updates.title !== undefined && updates.title !== old.title)
+      entries.push({ ...base, action_type: 'field_changed', field_name: 'title',
+        old_value: old.title, new_value: updates.title })
+
+    if (updates.description !== undefined && updates.description !== old.description)
+      entries.push({ ...base, action_type: 'field_changed', field_name: 'description',
+        old_value: null, new_value: null })
+
+    if (updates.assignees !== undefined) {
+      const oldIds = [...(old.assignees || [])].map(a => a.id).sort().join(',')
+      const newIds = [...(updates.assignees || [])].map(a => a.id).sort().join(',')
+      if (oldIds !== newIds)
+        entries.push({ ...base, action_type: 'field_changed', field_name: 'assignees',
+          old_value: (old.assignees || []).map(a => a.full_name).join(', '),
+          new_value: (updates.assignees || []).map(a => a.full_name).join(', ') })
+    }
+
+    if (updates.end_date !== undefined && updates.end_date !== old.end_date)
+      entries.push({ ...base, action_type: 'field_changed', field_name: 'end_date',
+        old_value: old.end_date, new_value: updates.end_date })
+
+    if (updates.start_date !== undefined && updates.start_date !== old.start_date)
+      entries.push({ ...base, action_type: 'field_changed', field_name: 'start_date',
+        old_value: old.start_date, new_value: updates.start_date })
+
+    if (updates.comments) {
+      const newComments = updates.comments.filter(c => !(old.comments || []).find(oc => oc.id === c.id))
+      for (const c of newComments)
+        entries.push({ ...base, action_type: 'comment_added', field_name: null, old_value: null, new_value: c.text })
+    }
+
+    return entries
+  }
+
+  // Sync mirrored tasks with the same field updates
+  const syncMirrors = async (task: Task, updates: Partial<Task>) => {
+    const rootId = task.mirror_of || task.id
+    const { data: siblings } = await supabase
+      .from('tasks')
+      .select('id')
+      .or(`id.eq.${rootId},mirror_of.eq.${rootId}`)
+      .neq('id', task.id)
+    if (!siblings?.length) return
+
+    const syncFields: (keyof Task)[] = ['title', 'description', 'status', 'priority', 'assignees', 'start_date', 'end_date', 'drive_links', 'comments', 'cover_pattern', 'cover_image_url']
+    const syncData: Partial<Task> = {}
+    for (const f of syncFields) {
+      if (f in updates) (syncData as any)[f] = (updates as any)[f]
+    }
+    if (!Object.keys(syncData).length) return
+
+    for (const s of siblings) {
+      await supabase.from('tasks').update(syncData).eq('id', s.id)
+    }
+  }
+
   const handleSaveTask = async (data: Partial<Task>) => {
     if (editingTask) {
+      const changes = detectChanges(editingTask, data)
       if (editFromAssigned) {
         await updateAssignedTask(editingTask.id, data)
       } else {
         await updateTask(editingTask.id, data)
       }
+      // Log activity entries
+      for (const entry of changes) {
+        await supabase.from('task_activities').insert({ task_id: editingTask.id, ...entry })
+      }
+      // Sync mirrors
+      await syncMirrors(editingTask, data)
       toast.success('Görev güncellendi')
     } else {
-      await createTask(data)
+      const created = await createTask(data)
+      if (created && profile) {
+        await supabase.from('task_activities').insert({
+          task_id: created.id,
+          user_id: profile.id,
+          user_name: profile.full_name,
+          user_initials: profile.initials,
+          action_type: 'created',
+          field_name: null, old_value: null, new_value: null,
+        })
+      }
       toast.success('Görev eklendi')
     }
+  }
+
+  const handleMirror = async (workspaceId: string) => {
+    if (!editingTask || !profile) return
+    const rootId = editingTask.mirror_of || editingTask.id
+    // Fetch the root task to copy all fields
+    const sourceTask = editingTask.mirror_of
+      ? ((await supabase.from('tasks').select('*').eq('id', rootId).single()).data as Task)
+      : editingTask
+    if (!sourceTask) { toast.error('Kaynak görev bulunamadı'); return }
+
+    const { id, workspace_id, mirror_of, created_at, updated_at, label_ids, board, position, ...rest } = sourceTask
+    const { error } = await supabase.from('tasks').insert({
+      ...rest,
+      workspace_id: workspaceId,
+      mirror_of: rootId,
+      created_by: profile.id,
+      position: 0,
+      label_ids: [],
+      board: null,
+    })
+    if (error) { toast.error('Aynalama oluşturulamadı'); return }
+
+    const targetWsName = workspaces.find(w => w.id === workspaceId)?.name || workspaceId
+    await supabase.from('task_activities').insert({
+      task_id: rootId,
+      user_id: profile.id,
+      user_name: profile.full_name,
+      user_initials: profile.initials,
+      action_type: 'mirrored',
+      field_name: null, old_value: null, new_value: targetWsName,
+    })
+    toast.success(`"${targetWsName}" alanına aynalaması oluşturuldu`)
   }
 
   const handleDeleteTask = async () => {
@@ -468,10 +590,12 @@ export default function Dashboard() {
           wsColor={modalWs?.color || '#534AB7'}
           labels={modalLabels}
           members={members}
+          workspaces={workspaces}
           defaultStatus={defaultStatus}
           onClose={() => { setTaskModalOpen(false); setEditingTask(null); setEditFromAssigned(false) }}
           onSave={handleSaveTask}
           onDelete={editingTask && !editFromAssigned ? handleDeleteTask : undefined}
+          onMirror={handleMirror}
         />
       )}
 

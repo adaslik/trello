@@ -1,14 +1,49 @@
 'use client'
 
-import { useState, useRef } from 'react'
-import { X, Trash2, Plus, ExternalLink, Send, RefreshCw, ImageIcon, Check, UserPlus } from 'lucide-react'
+import { useState, useRef, useEffect, useCallback } from 'react'
+import { X, Trash2, Plus, ExternalLink, Send, RefreshCw, ImageIcon, Check, UserPlus, GitBranch } from 'lucide-react'
 import toast from 'react-hot-toast'
-import type { Task, Label, Profile, ChecklistItem } from '@/types'
+import type { Task, Label, Profile, ChecklistItem, Workspace, TaskActivity } from '@/types'
 import { STATUS_LABELS, PRIORITY_LABELS, PRIORITY_COLORS, COVER_PATTERNS, lightenColor } from '@/lib/constants'
 import { useAuth } from '@/hooks/useAuth'
 import { formatDate } from '@/lib/constants'
 import { createBrowserClient } from '@/lib/supabase'
 import { useChecklists } from '@/hooks/useChecklists'
+import { useTaskActivity } from '@/hooks/useTaskActivity'
+
+function relativeTime(iso: string): string {
+  const diff = Date.now() - new Date(iso).getTime()
+  const mins = Math.floor(diff / 60000)
+  if (mins < 1) return 'Az önce'
+  if (mins < 60) return `${mins} dk önce`
+  const hrs = Math.floor(mins / 60)
+  if (hrs < 24) return `${hrs} saat önce`
+  const days = Math.floor(hrs / 24)
+  if (days < 7) return `${days} gün önce`
+  return new Date(iso).toLocaleDateString('tr-TR', { day: 'numeric', month: 'short', year: 'numeric' })
+}
+
+function formatActivityText(a: TaskActivity): string {
+  if (a.action_type === 'created') return 'Görevi oluşturdu'
+  if (a.action_type === 'mirrored') return `"${a.new_value}" alanına aynalaması oluşturuldu`
+  if (a.action_type === 'comment_added') {
+    const preview = (a.new_value || '').slice(0, 60)
+    return `Yorum ekledi: "${preview}${(a.new_value?.length || 0) > 60 ? '...' : ''}"`
+  }
+  if (a.action_type === 'field_changed') {
+    switch (a.field_name) {
+      case 'status':    return `Durumu "${a.old_value}" → "${a.new_value}" yaptı`
+      case 'priority':  return `Önceliği "${a.old_value}" → "${a.new_value}" yaptı`
+      case 'title':     return `Başlığı "${a.new_value}" olarak güncelledi`
+      case 'description': return 'Açıklamayı güncelledi'
+      case 'assignees': return `Sorumluları güncelledi → ${a.new_value || '(boş)'}`
+      case 'end_date':  return a.new_value ? `Bitiş tarihini ${formatDate(a.new_value)} olarak ayarladı` : 'Bitiş tarihini kaldırdı'
+      case 'start_date': return a.new_value ? `Başlangıç tarihini ${formatDate(a.new_value)} olarak ayarladı` : 'Başlangıç tarihini kaldırdı'
+      default:          return 'Alan güncelledi'
+    }
+  }
+  return 'Güncelledi'
+}
 
 // ─── Checklist Row ────────────────────────────────────────────────────────────
 
@@ -120,15 +155,17 @@ interface TaskModalProps {
   wsColor: string
   labels: Label[]
   members: Profile[]
+  workspaces: Workspace[]
   onClose: () => void
   onSave: (data: Partial<Task>) => Promise<void>
   onDelete?: () => Promise<void>
+  onMirror: (workspaceId: string) => Promise<void>
   defaultStatus?: Task['status']
 }
 
 export default function TaskModal({
-  task, wsColor, labels, members,
-  onClose, onSave, onDelete, defaultStatus = 'bekleyen',
+  task, wsColor, labels, members, workspaces,
+  onClose, onSave, onDelete, onMirror, defaultStatus = 'bekleyen',
 }: TaskModalProps) {
   const { profile } = useAuth()
   const commentRef = useRef<HTMLInputElement>(null)
@@ -157,6 +194,28 @@ export default function TaskModal({
   const [localLabelNames, setLocalLabelNames] = useState<Record<number, string>>({})
   const [newChecklistTitle, setNewChecklistTitle] = useState('')
   const { items: checklistItems, addItem: addChecklistItem, toggleItem, updateTitle: updateChecklistTitle, assignItem, deleteItem: deleteChecklistItem } = useChecklists(task?.id || null)
+  const { activities } = useTaskActivity(task?.id || null)
+
+  // Mirror related workspaces
+  const [mirrorWsList, setMirrorWsList] = useState<{ ws: Workspace; isSource: boolean }[]>([])
+
+  const fetchMirrors = useCallback(async () => {
+    if (!task) return
+    const rootId = task.mirror_of || task.id
+    const { data } = await supabase
+      .from('tasks')
+      .select('id, workspace_id, mirror_of')
+      .or(`id.eq.${rootId},mirror_of.eq.${rootId}`)
+      .neq('id', task.id)
+    if (data) {
+      setMirrorWsList(data.map(t => {
+        const ws = workspaces.find(w => w.id === t.workspace_id)
+        return ws ? { ws, isSource: !t.mirror_of } : null
+      }).filter(Boolean) as { ws: Workspace; isSource: boolean }[])
+    }
+  }, [task?.id, workspaces])
+
+  useEffect(() => { fetchMirrors() }, [fetchMirrors])
 
   const bg = lightenColor(wsColor)
   const coverSvg = COVER_PATTERNS[coverPattern % COVER_PATTERNS.length](bg, wsColor)
@@ -467,6 +526,31 @@ export default function TaskModal({
               </div>
             </div>
 
+            {/* Activity Log */}
+            {task && (
+              <div className="mb-5">
+                <p className="text-[10px] font-bold text-slate-400 tracking-widest mb-3">DEĞİŞİKLİK GEÇMİŞİ</p>
+                {activities.length === 0 ? (
+                  <p className="text-xs text-slate-400 italic">Henüz değişiklik kaydı yok</p>
+                ) : (
+                  <div className="space-y-3">
+                    {activities.map(a => (
+                      <div key={a.id} className="flex gap-2.5">
+                        <div className="w-6 h-6 rounded-full bg-slate-100 text-slate-600 text-[8px] font-bold flex items-center justify-center flex-shrink-0 mt-0.5">
+                          {a.user_initials}
+                        </div>
+                        <div className="flex-1 min-w-0">
+                          <p className="text-[10px] font-semibold text-slate-700">{a.user_name}</p>
+                          <p className="text-xs text-slate-600 leading-relaxed">{formatActivityText(a)}</p>
+                          <p className="text-[9px] text-slate-400 mt-0.5">{relativeTime(a.created_at)}</p>
+                        </div>
+                      </div>
+                    ))}
+                  </div>
+                )}
+              </div>
+            )}
+
             {/* Comments */}
             <div>
               <p className="text-[10px] font-bold text-slate-400 tracking-widest mb-2">YORUMLAR</p>
@@ -563,6 +647,49 @@ export default function TaskModal({
               <input type="date" className="w-full text-xs px-2 py-2 border border-slate-200 rounded-lg bg-white"
                 value={endDate} onChange={e => setEndDate(e.target.value)} />
             </div>
+            {/* Mirror Section */}
+            {task && (
+              <div>
+                <div className="flex items-center gap-1.5 mb-1.5">
+                  <GitBranch size={9} className="text-slate-400" />
+                  <p className="text-[9px] font-bold text-slate-400 tracking-widest">AYNALAMA</p>
+                </div>
+                {task.mirror_of && (
+                  <p className="text-[9px] text-purple-500 font-medium mb-1.5">Bu kart bir aynalamasıdır</p>
+                )}
+                {mirrorWsList.length > 0 ? (
+                  <div className="space-y-1 mb-2">
+                    {mirrorWsList.map(({ ws, isSource }) => (
+                      <div key={ws.id} className="flex items-center gap-1.5">
+                        <div className="w-2 h-2 rounded-full flex-shrink-0" style={{ background: ws.color }} />
+                        <span className="text-[10px] text-slate-600 flex-1 truncate">{ws.name}</span>
+                        {isSource && <span className="text-[8px] bg-purple-100 text-purple-600 px-1 py-0.5 rounded">kaynak</span>}
+                      </div>
+                    ))}
+                  </div>
+                ) : (
+                  <p className="text-[10px] text-slate-400 mb-2">Henüz aynalama yok</p>
+                )}
+                <select
+                  defaultValue=""
+                  onChange={async e => {
+                    if (!e.target.value) return
+                    const wsId = e.target.value
+                    e.target.value = ''
+                    await onMirror(wsId)
+                    await fetchMirrors()
+                  }}
+                  className="w-full text-[10px] px-2 py-1.5 border border-slate-200 rounded-lg bg-white text-slate-600 cursor-pointer"
+                >
+                  <option value="" disabled>+ Aynala...</option>
+                  {workspaces
+                    .filter(ws => ws.id !== task.workspace_id && !mirrorWsList.find(m => m.ws.id === ws.id))
+                    .map(ws => <option key={ws.id} value={ws.id}>{ws.name}</option>)
+                  }
+                </select>
+              </div>
+            )}
+
             {task && (
               <div className="pt-2 border-t border-slate-200">
                 <p className="text-[9px] text-slate-400">

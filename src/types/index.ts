@@ -92,6 +92,20 @@ export interface Task {
   created_by: string
   created_at: string
   updated_at: string
+  mirror_of?: string | null
+}
+
+export interface TaskActivity {
+  id: string
+  task_id: string
+  user_id: string | null
+  user_name: string
+  user_initials: string
+  action_type: string
+  field_name: string | null
+  old_value: string | null
+  new_value: string | null
+  created_at: string
 }
 
 export interface ChecklistItem {
