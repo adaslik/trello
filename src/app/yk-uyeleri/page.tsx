@@ -1,23 +1,30 @@
 'use client'
 
 import { useState, useEffect } from 'react'
-import { Users, Mail, Phone, Globe, Calendar, ChevronLeft, ChevronRight, Edit } from 'lucide-react'
+import { Users, Mail, Phone, Globe, ArrowLeft, ChevronRight, Edit, UserMinus } from 'lucide-react'
+import { useRouter } from 'next/navigation'
 import { createBrowserClient } from '@/lib/supabase'
 import { ROLE_LABELS } from '@/lib/constants'
 import type { Profile } from '@/types'
 import ProfileEditModal from '@/components/Profile/ProfileEditModal'
 import { useAuth } from '@/hooks/useAuth'
+import toast from 'react-hot-toast'
 
 export default function YKUyelerPage() {
   const supabase = createBrowserClient()
+  const router = useRouter()
   const { profile: currentUser } = useAuth()
   const [members, setMembers] = useState<Profile[]>([])
   const [loading, setLoading] = useState(true)
   const [selectedMember, setSelectedMember] = useState<Profile | null>(null)
   const [showProfileModal, setShowProfileModal] = useState(false)
   const [editingProfile, setEditingProfile] = useState<Profile | null>(null)
+  const [removingId, setRemovingId] = useState<string | null>(null)
+  const [confirmRemove, setConfirmRemove] = useState<Profile | null>(null)
 
-  useEffect(() => {
+  useEffect(() => { fetchMembers() }, [])
+
+  const fetchMembers = () => {
     supabase
       .from('profiles')
       .select('*')
@@ -27,7 +34,24 @@ export default function YKUyelerPage() {
         if (data) setMembers(data as Profile[])
         setLoading(false)
       })
-  }, [])
+  }
+
+  const handleRemove = async (member: Profile) => {
+    setRemovingId(member.id)
+    const { error } = await supabase
+      .from('profiles')
+      .update({ role: 'calisan' })
+      .eq('id', member.id)
+    setRemovingId(null)
+    setConfirmRemove(null)
+    if (error) {
+      toast.error('Çıkarılamadı: ' + error.message)
+    } else {
+      toast.success(`${member.full_name} YK üyeliğinden çıkarıldı`)
+      setSelectedMember(null)
+      fetchMembers()
+    }
+  }
 
   const formatDate = (dateStr?: string) => {
     if (!dateStr) return '-'
@@ -48,10 +72,17 @@ export default function YKUyelerPage() {
         {/* Header */}
         <div className="bg-white rounded-xl shadow-sm border border-gray-200 p-6 mb-6">
           <div className="flex items-center gap-3">
+            <button
+              onClick={() => router.back()}
+              className="p-2 rounded-lg hover:bg-slate-100 text-slate-500 hover:text-slate-700 transition-colors flex-shrink-0"
+              title="Geri"
+            >
+              <ArrowLeft size={20} />
+            </button>
             <div className="p-3 bg-blue-100 rounded-xl">
               <Users size={28} className="text-blue-600" />
             </div>
-            <div>
+            <div className="flex-1">
               <h1 className="text-2xl font-bold text-gray-900">YK Üyeleri</h1>
               <p className="text-gray-500">Yönetim kurulu üyeleri ve iletişim bilgileri</p>
             </div>
@@ -69,10 +100,9 @@ export default function YKUyelerPage() {
             {members.map((member) => (
               <div
                 key={member.id}
-                onClick={() => setSelectedMember(member)}
-                className="bg-white rounded-xl shadow-sm border border-gray-200 p-5 cursor-pointer hover:shadow-md hover:border-blue-300 transition-all"
+                className="bg-white rounded-xl shadow-sm border border-gray-200 p-5 hover:shadow-md hover:border-blue-300 transition-all"
               >
-                <div className="flex items-center gap-4">
+                <div className="flex items-center gap-4" onClick={() => setSelectedMember(member)} style={{ cursor: 'pointer' }}>
                   {member.avatar_url ? (
                     <img
                       src={member.avatar_url}
@@ -80,7 +110,7 @@ export default function YKUyelerPage() {
                       className="w-16 h-16 rounded-full object-cover border-2 border-blue-100"
                     />
                   ) : (
-                    <div className="w-16 h-16 rounded-full bg-gradient-to-br from-blue-500 to-purple-600 flex items-center justify-center text-white text-xl font-bold">
+                    <div className="w-16 h-16 rounded-full bg-gradient-to-br from-blue-500 to-purple-600 flex items-center justify-center text-white text-xl font-bold flex-shrink-0">
                       {member.initials}
                     </div>
                   )}
@@ -91,6 +121,15 @@ export default function YKUyelerPage() {
                       <p className="text-sm text-gray-500 truncate">{member.gorev}</p>
                     )}
                   </div>
+                  {currentUser?.role === 'yk_baskani' && member.id !== currentUser.id && (
+                    <button
+                      onClick={e => { e.stopPropagation(); setConfirmRemove(member) }}
+                      className="p-1.5 rounded-lg text-slate-300 hover:text-red-500 hover:bg-red-50 transition-colors flex-shrink-0"
+                      title="Üyelikten Çıkar"
+                    >
+                      <UserMinus size={16} />
+                    </button>
+                  )}
                 </div>
                 
                 {/* Quick Info */}
@@ -142,13 +181,24 @@ export default function YKUyelerPage() {
                     )}
                   </div>
                   {currentUser?.role === 'yk_baskani' && (
-                    <button
-                      onClick={() => { setEditingProfile(selectedMember); setShowProfileModal(true) }}
-                      className="p-2 text-gray-400 hover:text-indigo-600 hover:bg-indigo-50 rounded-lg"
-                      title="Düzenle"
-                    >
-                      <Edit size={18} />
-                    </button>
+                    <>
+                      <button
+                        onClick={() => { setEditingProfile(selectedMember); setShowProfileModal(true) }}
+                        className="p-2 text-gray-400 hover:text-indigo-600 hover:bg-indigo-50 rounded-lg"
+                        title="Düzenle"
+                      >
+                        <Edit size={18} />
+                      </button>
+                      {selectedMember.id !== currentUser.id && (
+                        <button
+                          onClick={() => setConfirmRemove(selectedMember)}
+                          className="p-2 text-gray-400 hover:text-red-500 hover:bg-red-50 rounded-lg"
+                          title="Üyelikten Çıkar"
+                        >
+                          <UserMinus size={18} />
+                        </button>
+                      )}
+                    </>
                   )}
                   <button
                     onClick={() => setSelectedMember(null)}
@@ -267,6 +317,38 @@ export default function YKUyelerPage() {
           onClose={() => { setShowProfileModal(false); setEditingProfile(null) }}
           editProfile={editingProfile}
         />
+
+        {/* Confirm Remove Modal */}
+        {confirmRemove && (
+          <div className="fixed inset-0 bg-black/50 flex items-center justify-center z-50 p-4">
+            <div className="bg-white rounded-xl shadow-xl max-w-sm w-full p-6">
+              <div className="flex items-center gap-3 mb-4">
+                <div className="p-2 bg-red-100 rounded-lg">
+                  <UserMinus size={20} className="text-red-600" />
+                </div>
+                <h3 className="text-base font-bold text-gray-900">Üyelikten Çıkar</h3>
+              </div>
+              <p className="text-sm text-gray-600 mb-6">
+                <strong>{confirmRemove.full_name}</strong> YK üyeliğinden çıkarılacak ve rolü <strong>Çalışan</strong> olarak güncellenecek. Bu işlem geri alınabilir.
+              </p>
+              <div className="flex gap-3">
+                <button
+                  onClick={() => setConfirmRemove(null)}
+                  className="flex-1 px-4 py-2 text-sm bg-slate-100 text-slate-700 rounded-lg hover:bg-slate-200 transition-colors"
+                >
+                  İptal
+                </button>
+                <button
+                  onClick={() => handleRemove(confirmRemove)}
+                  disabled={removingId === confirmRemove.id}
+                  className="flex-1 px-4 py-2 text-sm bg-red-600 text-white rounded-lg hover:bg-red-700 disabled:opacity-50 transition-colors"
+                >
+                  {removingId === confirmRemove.id ? 'Çıkarılıyor…' : 'Üyelikten Çıkar'}
+                </button>
+              </div>
+            </div>
+          </div>
+        )}
       </div>
     </div>
   )
