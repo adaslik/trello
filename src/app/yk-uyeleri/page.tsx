@@ -28,7 +28,7 @@ export default function YKUyelerPage() {
     supabase
       .from('profiles')
       .select('*')
-      .or('role.eq.yk_baskani,role.eq.yk_uyesi')
+      .or('role.eq.yk_baskani,role.eq.yk_baskan_vekili,role.eq.yk_sekreteri,role.eq.yk_it_sorumlusu,role.eq.yk_saymani,role.eq.yk_uyesi')
       .order('full_name')
       .then(({ data }) => {
         if (data) setMembers(data as Profile[])
@@ -121,7 +121,7 @@ export default function YKUyelerPage() {
                       <p className="text-sm text-gray-500 truncate">{member.gorev}</p>
                     )}
                   </div>
-                  {currentUser?.role === 'yk_baskani' && member.id !== currentUser.id && (
+                  {currentUser?.role && ['yk_baskani','yk_baskan_vekili','yk_sekreteri','yk_it_sorumlusu','yk_saymani'].includes(currentUser.role) && member.id !== currentUser.id && (
                     <button
                       onClick={e => { e.stopPropagation(); setConfirmRemove(member) }}
                       className="p-1.5 rounded-lg text-slate-300 hover:text-red-500 hover:bg-red-50 transition-colors flex-shrink-0"
@@ -180,7 +180,7 @@ export default function YKUyelerPage() {
                       <p className="text-gray-600 mt-1">{selectedMember.gorev}</p>
                     )}
                   </div>
-                  {currentUser?.role === 'yk_baskani' && (
+                  {currentUser?.role && ['yk_baskani','yk_baskan_vekili','yk_sekreteri','yk_it_sorumlusu','yk_saymani'].includes(currentUser.role) && (
                     <>
                       <button
                         onClick={() => { setEditingProfile(selectedMember); setShowProfileModal(true) }}

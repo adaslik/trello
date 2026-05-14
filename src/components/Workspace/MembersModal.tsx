@@ -49,7 +49,7 @@ export default function MembersModal({ workspace, allProfiles, onClose }: Member
     addBoardMember, updateBoardMemberRole, removeBoardMember,
   } = useMemberships(workspace.id)
 
-  const isAdmin = currentUser?.role === 'yk_baskani' || currentUser?.role === 'yk_uyesi'
+  const isAdmin = (currentUser?.role && ['yk_baskani','yk_baskan_vekili','yk_sekreteri','yk_it_sorumlusu','yk_saymani','yk_uyesi'].includes(currentUser.role))
     || wsMembers.some(m => m.user_id === currentUser?.id && m.role === 'admin')
 
   const sortByRole = <T extends { role: MembershipRole }>(list: T[]) =>

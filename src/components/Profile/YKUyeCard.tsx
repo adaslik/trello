@@ -35,7 +35,7 @@ export default function YKUyeCard({ editable = true }: YKUyeCardProps) {
     facebook: profile?.sosyal_medya?.facebook || '',
   })
 
-  const isYK = profile?.role === 'yk_baskani' || profile?.role === 'yk_uyesi'
+  const isYK = profile?.role && ['yk_baskani','yk_baskan_vekili','yk_sekreteri','yk_it_sorumlusu','yk_saymani','yk_uyesi'].includes(profile.role)
 
   if (!profile || !isYK) return null
 

@@ -40,10 +40,32 @@ export const PRIORITY_COLORS: Record<Priority, { bg: string; text: string }> = {
 
 export const ROLE_LABELS: Record<UserRole, string> = {
   yk_baskani:       'YK Başkanı',
+  yk_baskan_vekili: 'YK Başkan Vekili',
+  yk_sekreteri:     'YK Sekreteri',
+  yk_it_sorumlusu:  'YK IT Sorumlusu',
+  yk_saymani:       'YK Saymanı',
   yk_uyesi:         'YK Üyesi',
   komisyon_baskani: 'Komisyon Başkanı',
   calisan:          'Çalışan',
   temsilci:         'Temsilci',
+}
+
+// YK üyeliği gerektiren roller (yk-uyeleri sayfasında listelenir)
+export const YK_ROLES: UserRole[] = [
+  'yk_baskani', 'yk_baskan_vekili', 'yk_sekreteri', 'yk_it_sorumlusu', 'yk_saymani', 'yk_uyesi',
+]
+
+// YK Başkanı ile aynı tam yetkilere sahip roller
+export const YK_ADMIN_ROLES: UserRole[] = [
+  'yk_baskani', 'yk_baskan_vekili', 'yk_sekreteri', 'yk_it_sorumlusu', 'yk_saymani',
+]
+
+export function isYKAdmin(role?: UserRole | null): boolean {
+  return !!role && YK_ADMIN_ROLES.includes(role)
+}
+
+export function isYKMember(role?: UserRole | null): boolean {
+  return !!role && YK_ROLES.includes(role)
 }
 
 export const CAT_LABELS: Record<string, string> = {
@@ -73,7 +95,7 @@ export function canAccessWorkspace(
   wsAccessRoles: string[],
   wsAccessUserIds: string[]
 ): boolean {
-  if (userRole === 'yk_baskani') return true
+  if (isYKAdmin(userRole)) return true
   if (wsAccessUserIds.includes(userId)) return true
   if (wsAccessRoles.includes(userRole)) return true
   return false
@@ -83,7 +105,7 @@ export function canEditWorkspace(
   userRole: UserRole,
   wsAccessRoles: string[]
 ): boolean {
-  if (userRole === 'yk_baskani' || userRole === 'yk_uyesi') return true
+  if (isYKMember(userRole)) return true
   return wsAccessRoles.includes(userRole)
 }
 

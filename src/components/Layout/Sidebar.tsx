@@ -21,7 +21,7 @@ export default function Sidebar({
   onSelectWs, onAddWs, onManage, onEditProfile,
 }: SidebarProps) {
   const { signOut } = useAuth()
-  const isYK = profile.role === 'yk_baskani' || profile.role === 'yk_uyesi'
+  const isYK = ['yk_baskani','yk_baskan_vekili','yk_sekreteri','yk_it_sorumlusu','yk_saymani','yk_uyesi'].includes(profile.role)
 
   const grouped: Record<string, Workspace[]> = {}
   CAT_ORDER.forEach(c => { grouped[c] = [] })

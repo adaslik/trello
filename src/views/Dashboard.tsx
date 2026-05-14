@@ -20,7 +20,7 @@ import { useAssignedTasks } from '@/hooks/useAssignedTasks'
 import { useAssignedChecklists } from '@/hooks/useAssignedChecklists'
 import { useMemberships } from '@/hooks/useMemberships'
 import { createBrowserClient } from '@/lib/supabase'
-import { WORKSPACE_COLORS, CAT_LABELS, canEditWorkspace, STATUS_LABELS, PRIORITY_LABELS } from '@/lib/constants'
+import { WORKSPACE_COLORS, CAT_LABELS, canEditWorkspace, STATUS_LABELS, PRIORITY_LABELS, isYKAdmin, isYKMember } from '@/lib/constants'
 import type { Task, Workspace, Profile } from '@/types'
 import toast from 'react-hot-toast'
 
@@ -54,11 +54,11 @@ export default function Dashboard() {
 
   const activeWs = workspaces.find(w => w.id === activeWsId)
   const wsLabels = activeWsId ? (labels[activeWsId] || []) : []
-  const isYK = profile?.role === 'yk_baskani' || profile?.role === 'yk_uyesi'
+  const isYK = isYKMember(profile?.role)
   const canEdit = profile && activeWs ? canEditWorkspace(profile.role, activeWs.access_roles) : false
   const { wsMembers, refetch: refetchMembers } = useMemberships(activeWsId)
   const isBoardAdmin = profile ? (
-    profile.role === 'yk_baskani' || profile.role === 'yk_uyesi' ||
+    isYKMember(profile.role) ||
     wsMembers.some(m => m.user_id === profile.id && m.role === 'admin')
   ) : false
   const effectiveCanEdit = canEdit || isBoardAdmin

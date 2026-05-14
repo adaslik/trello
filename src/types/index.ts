@@ -1,5 +1,9 @@
 export type UserRole =
   | 'yk_baskani'
+  | 'yk_baskan_vekili'
+  | 'yk_sekreteri'
+  | 'yk_it_sorumlusu'
+  | 'yk_saymani'
   | 'yk_uyesi'
   | 'komisyon_baskani'
   | 'calisan'
