@@ -1,20 +1,27 @@
 import 'server-only'
-import { createServerComponentClient, createRouteHandlerClient } from '@supabase/auth-helpers-nextjs'
+import { createServerClient as _createServerClient } from '@supabase/ssr'
 import { cookies } from 'next/headers'
 
-const supabaseUrl = process.env.NEXT_PUBLIC_SUPABASE_URL
-const supabaseAnonKey = process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY
+const supabaseUrl = process.env.NEXT_PUBLIC_SUPABASE_URL!
+const supabaseAnonKey = process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY!
 
-// For server components
-export const createServerClient = () =>
-  createServerComponentClient(
-    { cookies },
-    { supabaseUrl, supabaseKey: supabaseAnonKey },
-  )
+async function makeClient() {
+  const cookieStore = await cookies()
+  return _createServerClient(supabaseUrl, supabaseAnonKey, {
+    cookies: {
+      getAll() {
+        return cookieStore.getAll()
+      },
+      setAll(cookiesToSet) {
+        try {
+          cookiesToSet.forEach(({ name, value, options }) =>
+            cookieStore.set(name, value, options)
+          )
+        } catch {}
+      },
+    },
+  })
+}
 
-// For route handlers (e.g. /api, /auth/callback)
-export const createRouteClient = () =>
-  createRouteHandlerClient(
-    { cookies },
-    { supabaseUrl, supabaseKey: supabaseAnonKey },
-  )
+export const createServerClient = makeClient
+export const createRouteClient = makeClient

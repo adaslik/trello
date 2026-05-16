@@ -1,12 +1,7 @@
-import { createClientComponentClient } from '@supabase/auth-helpers-nextjs'
+import { createBrowserClient as _createBrowserClient } from '@supabase/ssr'
 
-// Env vars are inlined into the client bundle at build time.
-// Passing them explicitly avoids any auto-detection ambiguity.
-const supabaseUrl = process.env.NEXT_PUBLIC_SUPABASE_URL
-const supabaseAnonKey = process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY
+const supabaseUrl = process.env.NEXT_PUBLIC_SUPABASE_URL!
+const supabaseAnonKey = process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY!
 
 export const createBrowserClient = () =>
-  createClientComponentClient({
-    supabaseUrl,
-    supabaseKey: supabaseAnonKey,
-  })
+  _createBrowserClient(supabaseUrl, supabaseAnonKey)

@@ -9,7 +9,9 @@
       "Bash(git add *)",
       "Bash(git commit -m 'fix: skip cover_image_url in payload when null \\(column may not exist yet\\) *)",
       "Bash(git commit -m 'feat: add ERP-style home dashboard with KPIs, task breakdown, deadlines *)",
-      "Bash(xargs grep *)"
+      "Bash(xargs grep *)",
+      "Bash(git commit -m ' *)",
+      "Bash(node -e ' *)"
     ]
   }
 }
