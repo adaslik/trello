@@ -147,11 +147,12 @@ export default function HomeView({ workspaces, profile, notifications, assignedT
             </button>
           )}
         </div>
-        <div className="flex items-start gap-3 flex-shrink-0">
-          {/* Katılma İstekleri widget — completion rate ile yan yana */}
-          {joinRequestNode}
+        {/* Mobilde: tamamlanma üstte, katılma istekleri altta
+            Masaüstünde: katılma istekleri solda, tamamlanma sağda */}
+        <div className="flex flex-col md:flex-row items-end md:items-start gap-3 flex-shrink-0">
+          <div className="order-2 md:order-1">{joinRequestNode}</div>
 
-          <div className="text-right bg-white border border-slate-200 rounded-2xl px-5 py-3">
+          <div className="order-1 md:order-2 text-right bg-white border border-slate-200 rounded-2xl px-5 py-3">
             <p className="text-[10px] font-bold text-slate-400 tracking-widest">TAMAMLANMA ORANI</p>
             <p className="text-3xl font-black text-indigo-600 leading-none mt-1">%{completionRate}</p>
             <div className="mt-2 h-1.5 bg-slate-100 rounded-full w-32 overflow-hidden">

@@ -851,18 +851,17 @@ export default function Dashboard() {
         isCreateMode={false}
       />
 
-      {/* Mobil Alt Navigasyon */}
-      <div className="md:hidden fixed bottom-0 left-0 right-0 bg-white border-t border-slate-200 flex z-40 safe-area-pb">
+      {/* Mobil Alt Navigasyon — Tahta | Gantt | [Ana Sayfa] | Takvim | Mesajlar */}
+      <div className="md:hidden fixed bottom-0 left-0 right-0 bg-white border-t border-slate-200 flex items-stretch z-40">
+        {/* Tahta */}
         {([
-          { v: 'anasayfa', icon: Home, label: 'Ana Sayfa' },
-          { v: 'kanban',   icon: LayoutGrid, label: 'Tahta' },
-          { v: 'gantt',    icon: BarChart2,  label: 'Gantt' },
-          { v: 'takvim',   icon: Calendar,   label: 'Takvim' },
+          { v: 'kanban',  icon: LayoutGrid, label: 'Tahta' },
+          { v: 'gantt',   icon: BarChart2,  label: 'Gantt' },
         ] as const).map(({ v, icon: Icon, label }) => (
           <button
             key={v}
             onClick={() => {
-              if (v !== 'anasayfa' && !activeWsId && workspaces.length) setActiveWsId(workspaces[0].id)
+              if (!activeWsId && workspaces.length) setActiveWsId(workspaces[0].id)
               setView(v)
             }}
             className={`flex-1 flex flex-col items-center py-2.5 gap-1 text-[10px] font-medium transition-colors ${
@@ -873,18 +872,45 @@ export default function Dashboard() {
             {label}
           </button>
         ))}
-        {totalUnread > 0 && (
-          <button
-            onClick={() => setShowNotif(!showNotif)}
-            className="flex-1 flex flex-col items-center py-2.5 gap-1 text-[10px] font-medium text-slate-400 relative"
-          >
-            <div className="relative">
-              <Bell size={20} strokeWidth={1.5} />
-              <span className="absolute -top-1 -right-1 w-2 h-2 bg-red-500 rounded-full" />
-            </div>
-            Bildirim
-          </button>
-        )}
+
+        {/* Ana Sayfa — ortada, vurgulu */}
+        <button
+          onClick={() => setView('anasayfa')}
+          className="flex-1 flex flex-col items-center justify-center gap-1 text-[10px] font-medium transition-colors relative"
+        >
+          <div className={`w-12 h-12 rounded-2xl flex items-center justify-center shadow-md transition-colors ${
+            view === 'anasayfa' ? 'bg-indigo-600' : 'bg-slate-100'
+          }`} style={{ marginTop: -18 }}>
+            <Home size={22} strokeWidth={view === 'anasayfa' ? 2.5 : 1.5}
+              className={view === 'anasayfa' ? 'text-white' : 'text-slate-500'} />
+          </div>
+          <span className={view === 'anasayfa' ? 'text-indigo-600' : 'text-slate-400'}>Ana Sayfa</span>
+        </button>
+
+        {/* Takvim */}
+        <button
+          onClick={() => {
+            if (!activeWsId && workspaces.length) setActiveWsId(workspaces[0].id)
+            setView('takvim')
+          }}
+          className={`flex-1 flex flex-col items-center py-2.5 gap-1 text-[10px] font-medium transition-colors ${
+            view === 'takvim' ? 'text-indigo-600' : 'text-slate-400'
+          }`}
+        >
+          <Calendar size={20} strokeWidth={view === 'takvim' ? 2.5 : 1.5} />
+          Takvim
+        </button>
+
+        {/* Mesajlar */}
+        <button
+          onClick={() => { setShowChat(v => !v); setShowNotif(false) }}
+          className={`flex-1 flex flex-col items-center py-2.5 gap-1 text-[10px] font-medium transition-colors relative ${
+            showChat ? 'text-indigo-600' : 'text-slate-400'
+          }`}
+        >
+          <MessageSquare size={20} strokeWidth={showChat ? 2.5 : 1.5} />
+          Mesajlar
+        </button>
       </div>
     </div>
   )
