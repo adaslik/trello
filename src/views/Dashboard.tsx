@@ -515,15 +515,6 @@ export default function Dashboard() {
                 <Users size={12} /> Çalışanlar
               </button>
 
-              {/* Yeni YK Üyesi - Sadece YK Başkanı için */}
-              {isYK && (
-                <button
-                  onClick={() => { setEditingProfile(null); setShowProfileModal(true) }}
-                  className="flex items-center gap-1.5 px-3 py-1.5 text-[11px] rounded-lg font-medium bg-green-100 text-green-700 hover:bg-green-200 transition-colors"
-                >
-                  <Plus size={12} /> Yeni Üye
-                </button>
-              )}
 
               {/* View switcher */}
               <div className="flex bg-slate-100 rounded-lg p-0.5">
@@ -838,7 +829,7 @@ export default function Dashboard() {
         isOpen={showProfileModal}
         onClose={() => { setShowProfileModal(false); setEditingProfile(null) }}
         editProfile={editingProfile}
-        isCreateMode={!editingProfile && isYK}
+        isCreateMode={false}
       />
 
       {/* Mobil Alt Navigasyon */}

@@ -22,6 +22,8 @@ export default function YKUyelerPage() {
   const [removingId, setRemovingId] = useState<string | null>(null)
   const [confirmRemove, setConfirmRemove] = useState<Profile | null>(null)
 
+  const isYKAdmin = currentUser?.role && ['yk_baskani','yk_baskan_vekili','yk_sekreteri','yk_it_sorumlusu','yk_saymani'].includes(currentUser.role)
+
   useEffect(() => { fetchMembers() }, [])
 
   const fetchMembers = () => {
@@ -86,6 +88,14 @@ export default function YKUyelerPage() {
               <h1 className="text-2xl font-bold text-gray-900">YK Üyeleri</h1>
               <p className="text-gray-500">Yönetim kurulu üyeleri ve iletişim bilgileri</p>
             </div>
+            {isYKAdmin && (
+              <button
+                onClick={() => { setEditingProfile(null); setShowProfileModal(true) }}
+                className="flex items-center gap-2 px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 text-sm font-medium transition-colors"
+              >
+                + YK Üyesi Ekle
+              </button>
+            )}
           </div>
         </div>
 
@@ -316,6 +326,7 @@ export default function YKUyelerPage() {
           isOpen={showProfileModal}
           onClose={() => { setShowProfileModal(false); setEditingProfile(null); setSelectedMember(null); fetchMembers() }}
           editProfile={editingProfile}
+          isCreateMode={!editingProfile}
         />
 
         {/* Confirm Remove Modal */}
