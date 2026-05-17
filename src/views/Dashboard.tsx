@@ -251,25 +251,33 @@ export default function Dashboard() {
         const taskWs = workspaces.find(w => w.id === editingTask.workspace_id)
         const wsId   = editingTask.workspace_id
         const wsName = taskWs?.name || ''
-        const currentAssignees = (data.assignees ?? editingTask.assignees ?? []).map(a => a.id)
-        const others = currentAssignees.filter(id => id !== profile.id)
+        // Tüm YK üyeleri (kendisi hariç) bildirim alır
+        const ykRecipients = members
+          .filter(m => isYKMember(m.role) && m.id !== profile.id)
+          .map(m => m.id)
 
         for (const entry of changes) {
           if (entry.action_type === 'field_changed' && entry.field_name === 'status') {
-            await sendNotifs(others, wsId, wsName,
+            await sendNotifs(ykRecipients, wsId, wsName,
               `"${editingTask.title}" görevi "${entry.new_value}" durumuna alındı`)
           } else if (entry.action_type === 'comment_added') {
-            await sendNotifs(others, wsId, wsName,
+            await sendNotifs(ykRecipients, wsId, wsName,
               `${profile.full_name}, "${editingTask.title}" görevine yorum ekledi`)
           } else if (entry.action_type === 'field_changed' && entry.field_name === 'assignees') {
             const oldIds = (editingTask.assignees ?? []).map(a => a.id)
+            // Yeni atanan kişiler: YK üyesi değilse de kişisel bildirim alır
             const newlyAdded = (data.assignees ?? [])
               .map(a => a.id)
               .filter(id => !oldIds.includes(id) && id !== profile.id)
-            await sendNotifs(newlyAdded, wsId, wsName,
+            const assigneeNotifIds = [...new Set([...ykRecipients, ...newlyAdded])]
+            await sendNotifs(assigneeNotifIds, wsId, wsName,
+              `"${editingTask.title}" görevine atama güncellendi`)
+            // Sadece yeni eklenen YK üyesi olmayanlar için kişisel bildirim
+            const nonYK = newlyAdded.filter(id => !ykRecipients.includes(id))
+            await sendNotifs(nonYK, wsId, wsName,
               `"${editingTask.title}" görevine atandınız`)
           } else if (entry.action_type === 'field_changed' && entry.field_name === 'priority') {
-            await sendNotifs(others, wsId, wsName,
+            await sendNotifs(ykRecipients, wsId, wsName,
               `"${editingTask.title}" görevinin önceliği "${entry.new_value}" olarak güncellendi`)
           }
         }
@@ -287,12 +295,20 @@ export default function Dashboard() {
           action_type: 'created',
           field_name: null, old_value: null, new_value: null,
         })
-        // Yeni görev atandı bildirimi
+        // Yeni görev bildirimi: tüm YK üyeleri + atanan non-YK kişiler
         const taskWs = workspaces.find(w => w.id === created.workspace_id)
-        const recipients = (created.assignees ?? [])
+        const ykIds = members
+          .filter(m => isYKMember(m.role) && m.id !== profile.id)
+          .map(m => m.id)
+        const assigneeIds = (created.assignees ?? [])
           .map(a => a.id)
           .filter(id => id !== profile.id)
-        await sendNotifs(recipients, created.workspace_id, taskWs?.name || '',
+        const ykRecipients = [...new Set([...ykIds, ...assigneeIds])]
+        await sendNotifs(ykRecipients, created.workspace_id, taskWs?.name || '',
+          `Yeni görev oluşturuldu: "${created.title}"`)
+        // Atanan non-YK kişiye ek olarak "atandınız" bildirimi
+        const nonYKAssignees = assigneeIds.filter(id => !ykIds.includes(id))
+        await sendNotifs(nonYKAssignees, created.workspace_id, taskWs?.name || '',
           `Size yeni bir görev atandı: "${created.title}"`)
       }
       toast.success('Görev eklendi')
