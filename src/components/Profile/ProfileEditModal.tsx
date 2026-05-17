@@ -27,6 +27,7 @@ export default function ProfileEditModal(props: ProfileEditModalProps) {
 
   const targetProfile = editProfile || currentUser
   const isYKChairman = currentUser?.role && ['yk_baskani','yk_baskan_vekili','yk_sekreteri','yk_it_sorumlusu','yk_saymani'].includes(currentUser.role)
+  const canChangeRoles = currentUser?.role && ['yk_baskani', 'yk_it_sorumlusu'].includes(currentUser.role)
   const isOwnProfile = !isCreateMode && (!editProfile || editProfile.id === currentUser?.id)
   
   const [form, setForm] = useState({
@@ -194,6 +195,7 @@ export default function ProfileEditModal(props: ProfileEditModalProps) {
                   {workerMode ? (
                     <>
                       <option value="calisan">Çalışan</option>
+                      <option value="danisman">Danışma Kurulu Üyesi</option>
                       <option value="komisyon_baskani">Komisyon Başkanı</option>
                       <option value="temsilci">Temsilci</option>
                     </>
@@ -207,6 +209,32 @@ export default function ProfileEditModal(props: ProfileEditModalProps) {
                       <option value="yk_saymani">YK Saymanı</option>
                     </>
                   )}
+                </select>
+              </div>
+            )}
+
+            {!isCreateMode && isEditingOther && canChangeRoles && (
+              <div>
+                <label className="block text-sm font-medium text-gray-700 mb-1">Rol Değiştir</label>
+                <select
+                  value={form.role}
+                  onChange={(e) => setForm({ ...form, role: e.target.value as UserRole })}
+                  className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-indigo-500"
+                >
+                  <optgroup label="YK Rolleri">
+                    <option value="yk_baskani">YK Başkanı</option>
+                    <option value="yk_baskan_vekili">YK Başkan Vekili</option>
+                    <option value="yk_sekreteri">YK Sekreteri</option>
+                    <option value="yk_it_sorumlusu">YK IT Sorumlusu</option>
+                    <option value="yk_saymani">YK Saymanı</option>
+                    <option value="yk_uyesi">YK Üyesi</option>
+                  </optgroup>
+                  <optgroup label="Diğer Roller">
+                    <option value="komisyon_baskani">Komisyon Başkanı</option>
+                    <option value="calisan">Çalışan</option>
+                    <option value="danisman">Danışma Kurulu Üyesi</option>
+                    <option value="temsilci">Temsilci</option>
+                  </optgroup>
                 </select>
               </div>
             )}

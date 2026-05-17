@@ -48,6 +48,7 @@ export const ROLE_LABELS: Record<UserRole, string> = {
   komisyon_baskani: 'Komisyon Başkanı',
   calisan:          'Çalışan',
   temsilci:         'Temsilci',
+  danisman:         'Danışma Kurulu Üyesi',
 }
 
 // YK üyeliği gerektiren roller (yk-uyeleri sayfasında listelenir)

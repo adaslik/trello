@@ -36,13 +36,25 @@ export function useTasks(workspaceId: string | null) {
         table: 'tasks',
         filter: `workspace_id=eq.${workspaceId}`,
       }, (payload) => {
+        const isCalisan = profile?.role === 'calisan'
+
         if (payload.eventType === 'INSERT') {
-          setTasks(prev => [...prev, payload.new as Task])
-          if (payload.new.created_by !== user?.id) {
-            toast(`Yeni görev: "${(payload.new as Task).title}"`)
+          const task = payload.new as Task
+          const isAssigned = task.assignees?.some(a => a.id === user?.id)
+          if (isCalisan && !isAssigned) return
+          setTasks(prev => [...prev, task])
+          if (task.created_by !== user?.id) {
+            toast(`Yeni görev: "${task.title}"`)
           }
         } else if (payload.eventType === 'UPDATE') {
-          setTasks(prev => prev.map(t => t.id === payload.new.id ? payload.new as Task : t))
+          const task = payload.new as Task
+          const isAssigned = task.assignees?.some(a => a.id === user?.id)
+          if (isCalisan && !isAssigned) {
+            // Görevden çıkarıldıysa listeden kaldır
+            setTasks(prev => prev.filter(t => t.id !== task.id))
+            return
+          }
+          setTasks(prev => prev.map(t => t.id === task.id ? task : t))
         } else if (payload.eventType === 'DELETE') {
           setTasks(prev => prev.filter(t => t.id !== payload.old.id))
         }
@@ -50,7 +62,7 @@ export function useTasks(workspaceId: string | null) {
       .subscribe()
 
     return () => { supabase.removeChannel(channel) }
-  }, [workspaceId, fetchTasks])
+  }, [workspaceId, fetchTasks, profile?.role])
 
   const createTask = async (task: Partial<Task>) => {
     if (!user || !workspaceId) return null

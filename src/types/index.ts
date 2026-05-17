@@ -8,6 +8,7 @@ export type UserRole =
   | 'komisyon_baskani'
   | 'calisan'
   | 'temsilci'
+  | 'danisman'
 
 export interface Profile {
   id: string

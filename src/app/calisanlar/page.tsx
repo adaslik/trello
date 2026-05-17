@@ -30,7 +30,7 @@ export default function CalisanlarPage() {
     supabase
       .from('profiles')
       .select('*')
-      .or('role.eq.komisyon_baskani,role.eq.calisan,role.eq.temsilci')
+      .or('role.eq.komisyon_baskani,role.eq.calisan,role.eq.temsilci,role.eq.danisman')
       .order('full_name')
       .then(({ data }) => {
         if (data) setMembers(data as Profile[])
