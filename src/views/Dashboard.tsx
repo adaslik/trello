@@ -1,7 +1,7 @@
 'use client'
 
 import { useState, useEffect, useCallback } from 'react'
-import { Bell, Plus, Settings, LayoutGrid, BarChart2, Calendar, Home, Users, LogOut, User, Menu, X as XIcon, Shield, Eye } from 'lucide-react'
+import { Bell, Plus, Settings, LayoutGrid, BarChart2, Calendar, Home, Users, LogOut, User, Menu, X as XIcon, Shield, Eye, MessageSquare } from 'lucide-react'
 import { useRouter } from 'next/navigation'
 import Sidebar from '@/components/Layout/Sidebar'
 import KanbanBoard from '@/components/Board/KanbanBoard'
@@ -13,6 +13,7 @@ import MembersModal from '@/components/Workspace/MembersModal'
 import YKUyeCard from '@/components/Profile/YKUyeCard'
 import JoinRequestCard from '@/components/JoinRequest/JoinRequestCard'
 import ProfileEditModal from '@/components/Profile/ProfileEditModal'
+import MessagingPanel from '@/components/Messaging/MessagingPanel'
 import { useAuth } from '@/hooks/useAuth'
 import { useWorkspaces } from '@/hooks/useWorkspaces'
 import { useTasks } from '@/hooks/useTasks'
@@ -43,6 +44,7 @@ export default function Dashboard() {
   const [members, setMembers] = useState<Profile[]>([])
   const [notifications, setNotifications] = useState<any[]>([])
   const [showNotif, setShowNotif] = useState(false)
+  const [showChat,  setShowChat]  = useState(false)
   const [showWsModal, setShowWsModal] = useState(false)
   const [showManageModal, setShowManageModal] = useState(false)
   const [showProfileModal, setShowProfileModal] = useState(false)
@@ -546,7 +548,15 @@ export default function Dashboard() {
             )}
 
             <button
-              onClick={() => setShowNotif(!showNotif)}
+              onClick={() => { setShowChat(v => !v); setShowNotif(false) }}
+              className={`p-2 rounded-lg transition-colors ${showChat ? 'bg-indigo-100 text-indigo-600' : 'text-slate-500 hover:text-slate-700 hover:bg-slate-100'}`}
+              title="Mesajlar"
+            >
+              <MessageSquare size={16} />
+            </button>
+
+            <button
+              onClick={() => { setShowNotif(!showNotif); setShowChat(false) }}
               className="relative p-2 text-slate-500 hover:text-slate-700 hover:bg-slate-100 rounded-lg"
             >
               <Bell size={16} />
@@ -681,6 +691,15 @@ export default function Dashboard() {
           )}
         </div>
       </div>
+
+      {/* Messaging panel */}
+      {showChat && profile && (
+        <MessagingPanel
+          profiles={members}
+          currentUser={profile}
+          onClose={() => setShowChat(false)}
+        />
+      )}
 
       {/* Notifications panel */}
       {showNotif && (

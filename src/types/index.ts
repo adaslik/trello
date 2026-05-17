@@ -128,10 +128,20 @@ export interface ChecklistItem {
 export interface Notification {
   id: string
   user_id: string
-  workspace_id: string
+  workspace_id?: string | null
   workspace_name: string
   text: string
   is_read: boolean
+  created_at: string
+}
+
+export interface Message {
+  id: string
+  sender_id: string
+  content: string
+  type: 'public' | 'dm' | 'topic'
+  recipient_id?: string | null
+  topic?: string | null
   created_at: string
 }
 
