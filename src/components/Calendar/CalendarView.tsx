@@ -28,17 +28,30 @@ export default function CalendarView({ tasks, labels, wsColor, onTaskClick }: Ca
   const last = new Date(year, month + 1, 0)
   const startDow = (first.getDay() + 6) % 7 // Mon-start
 
-  // Build event map
-  const byDay: Record<number, Task[]> = {}
+  // Görev sadece başlangıç ve bitiş günlerinde görünür
+  // Her giriş: { task, isEnd } — isEnd=true ise bitiş günü etiketi
+  const byDay: Record<number, { task: Task; isEnd: boolean }[]> = {}
+
+  const addToDay = (day: Date, task: Task, isEnd: boolean) => {
+    if (day.getFullYear() !== year || day.getMonth() !== month) return
+    const k = day.getDate()
+    if (!byDay[k]) byDay[k] = []
+    // Aynı görev aynı gün hem başlıyor hem bitiyorsa tek kayıt yeter
+    if (!byDay[k].find(e => e.task.id === task.id)) {
+      byDay[k].push({ task, isEnd })
+    }
+  }
+
   tasks.forEach(task => {
-    if (!task.start_date || !task.end_date) return
-    const s = new Date(task.start_date)
-    const e = new Date(task.end_date)
-    for (let d = new Date(s); d <= e; d.setDate(d.getDate() + 1)) {
-      if (d.getFullYear() === year && d.getMonth() === month) {
-        const k = d.getDate()
-        if (!byDay[k]) byDay[k] = []
-        if (!byDay[k].find(t => t.id === task.id)) byDay[k].push(task)
+    const hasStart = !!task.start_date
+    const hasEnd   = !!task.end_date
+    if (!hasStart && !hasEnd) return
+    if (hasStart) addToDay(new Date(task.start_date!), task, false)
+    if (hasEnd) {
+      const endDay = new Date(task.end_date!)
+      // Aynı gün ise zaten eklendi; farklıysa bitiş olarak ekle
+      if (!hasStart || task.start_date !== task.end_date) {
+        addToDay(endDay, task, true)
       }
     }
   })
@@ -86,17 +99,23 @@ export default function CalendarView({ tasks, labels, wsColor, onTaskClick }: Ca
               <div className={`text-[10px] font-semibold mb-1 ${isToday(day) ? 'text-indigo-600' : 'text-slate-500'}`}>
                 {day}
               </div>
-              {evts.slice(0, 3).map(task => {
+              {evts.slice(0, 3).map(({ task, isEnd }) => {
                 const firstLabel = task.label_ids?.[0] != null ? labels.find(l => l.id === task.label_ids[0]) : null
                 const color = firstLabel?.color || wsColor
                 return (
                   <div
-                    key={task.id}
-                    className="text-[8px] px-1.5 py-0.5 rounded mb-0.5 truncate cursor-pointer font-medium"
-                    style={{ background: color + '22', color }}
+                    key={task.id + (isEnd ? '-end' : '-start')}
+                    className="text-[8px] px-1.5 py-0.5 rounded mb-0.5 truncate cursor-pointer font-medium flex items-center gap-0.5"
+                    style={
+                      isEnd
+                        ? { background: color + '18', color, border: `1px solid ${color}55` }
+                        : { background: color + '33', color }
+                    }
                     onClick={() => onTaskClick(task)}
+                    title={isEnd ? `Bitiş: ${task.title}` : `Başlangıç: ${task.title}`}
                   >
-                    {task.title}
+                    <span className="flex-shrink-0">{isEnd ? '⏹' : '▶'}</span>
+                    <span className="truncate">{task.title}</span>
                   </div>
                 )
               })}
