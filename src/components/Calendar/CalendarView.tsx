@@ -28,15 +28,19 @@ export default function CalendarView({ tasks, labels, wsColor, onTaskClick }: Ca
   const last = new Date(year, month + 1, 0)
   const startDow = (first.getDay() + 6) % 7 // Mon-start
 
+  // "2026-05-15" → yerel saat gece yarısı (UTC yorumlamasından kaçın)
+  const parseDate = (s: string) => {
+    const [y, m, d] = s.split('-').map(Number)
+    return new Date(y, m - 1, d)
+  }
+
   // Görev sadece başlangıç ve bitiş günlerinde görünür
-  // Her giriş: { task, isEnd } — isEnd=true ise bitiş günü etiketi
   const byDay: Record<number, { task: Task; isEnd: boolean }[]> = {}
 
   const addToDay = (day: Date, task: Task, isEnd: boolean) => {
     if (day.getFullYear() !== year || day.getMonth() !== month) return
     const k = day.getDate()
     if (!byDay[k]) byDay[k] = []
-    // Aynı görev aynı gün hem başlıyor hem bitiyorsa tek kayıt yeter
     if (!byDay[k].find(e => e.task.id === task.id)) {
       byDay[k].push({ task, isEnd })
     }
@@ -46,14 +50,11 @@ export default function CalendarView({ tasks, labels, wsColor, onTaskClick }: Ca
     const hasStart = !!task.start_date
     const hasEnd   = !!task.end_date
     if (!hasStart && !hasEnd) return
-    if (hasStart) addToDay(new Date(task.start_date!), task, false)
-    if (hasEnd) {
-      const endDay = new Date(task.end_date!)
-      // Aynı gün ise zaten eklendi; farklıysa bitiş olarak ekle
-      if (!hasStart || task.start_date !== task.end_date) {
-        addToDay(endDay, task, true)
-      }
+    if (hasStart) addToDay(parseDate(task.start_date!), task, false)
+    if (hasEnd && task.start_date !== task.end_date) {
+      addToDay(parseDate(task.end_date!), task, true)
     }
+    // Tek günlük görev (start === end): zaten start olarak eklendi
   })
 
   const monthName = first.toLocaleDateString('tr-TR', { month: 'long', year: 'numeric' })
