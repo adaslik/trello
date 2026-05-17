@@ -111,28 +111,43 @@ export default function CalendarView({ tasks, labels, wsColor, onTaskClick }: Ca
   }
 
   // ── Görev kartı (haftalık/günlük için büyük) ──────────────────
-  const TaskCard = ({ task, isEnd }: { task: Task; isEnd: boolean }) => {
+  type CardType = 'start' | 'end' | 'ongoing'
+  const CARD_ICON: Record<CardType, string> = { start: '▶', end: '⏹', ongoing: '⟶' }
+  const CARD_LABEL: Record<CardType, string> = { start: 'Başlıyor', end: 'Bitiyor', ongoing: 'Devam Ediyor' }
+
+  const TaskCard = ({ task, type }: { task: Task; type: CardType }) => {
     const firstLabel = task.label_ids?.[0] != null ? labels.find(l => l.id === task.label_ids[0]) : null
     const color = firstLabel?.color || wsColor
     const pri   = PRIORITY_COLORS[task.priority as keyof typeof PRIORITY_COLORS] ?? PRIORITY_COLORS.orta
+    const opacity = type === 'ongoing' ? '18' : type === 'end' ? '12' : '22'
     return (
       <div
         onClick={() => onTaskClick(task)}
-        className="p-2 rounded-lg cursor-pointer mb-1.5 border hover:opacity-80 transition-opacity"
-        style={{ borderLeft: `3px solid ${color}`, background: color + '0e', borderColor: color + '40' }}
+        className="p-2.5 rounded-lg cursor-pointer border hover:opacity-80 transition-opacity"
+        style={{ borderLeft: `3px solid ${color}`, background: color + opacity, borderTopColor: color + '30', borderRightColor: color + '30', borderBottomColor: color + '30' }}
       >
-        <div className="flex items-center gap-1 mb-0.5">
-          <span className="text-[9px]">{isEnd ? '⏹' : '▶'}</span>
-          <p className="text-[11px] font-semibold text-slate-800 truncate flex-1">{task.title}</p>
+        <div className="flex items-center gap-1.5 mb-1">
+          <span className="text-[10px]" style={{ color }}>{CARD_ICON[type]}</span>
+          <p className="text-[12px] font-semibold text-slate-800 flex-1">{task.title}</p>
+          <span className="text-[9px] font-medium px-1.5 py-px rounded-full flex-shrink-0" style={{ background: color + '22', color }}>
+            {CARD_LABEL[type]}
+          </span>
         </div>
         <div className="flex items-center gap-1.5 flex-wrap">
           <span className="text-[9px] text-slate-500">{STATUS_LABELS[task.status as keyof typeof STATUS_LABELS] || task.status}</span>
           <span
-            className="text-[9px] font-medium px-1 py-px rounded-full"
+            className="text-[9px] font-medium px-1.5 py-px rounded-full"
             style={{ background: pri.bg, color: pri.text }}
           >
             {PRIORITY_LABELS[task.priority as keyof typeof PRIORITY_LABELS] || task.priority}
           </span>
+          {(task.start_date || task.end_date) && (
+            <span className="text-[9px] text-slate-400 ml-auto">
+              {task.start_date && new Date(task.start_date).toLocaleDateString('tr-TR', { day:'numeric', month:'short' })}
+              {task.start_date && task.end_date && ' → '}
+              {task.end_date && new Date(task.end_date).toLocaleDateString('tr-TR', { day:'numeric', month:'short' })}
+            </span>
+          )}
         </div>
       </div>
     )
@@ -211,6 +226,16 @@ export default function CalendarView({ tasks, labels, wsColor, onTaskClick }: Ca
     const evts = byKey[key] || []
     const isT  = isSameDay(cursor, today)
 
+    const startTasks   = evts.filter(e => !e.isEnd).map(e => e.task)
+    const endTasks     = evts.filter(e =>  e.isEnd).map(e => e.task)
+    const ongoingTasks = tasks.filter(task => {
+      if (!task.start_date || !task.end_date) return false
+      const s = parseDate(task.start_date)
+      const e = parseDate(task.end_date)
+      return s < cursor && e > cursor
+    })
+    const allCount = startTasks.length + endTasks.length + ongoingTasks.length
+
     return (
       <div>
         <div className={`flex items-center justify-center gap-2 py-3 rounded-xl mb-4 ${isT ? 'bg-indigo-600' : 'bg-slate-100'}`}>
@@ -219,14 +244,16 @@ export default function CalendarView({ tasks, labels, wsColor, onTaskClick }: Ca
           </span>
           {isT && <span className="text-[10px] bg-white text-indigo-600 font-bold px-2 py-0.5 rounded-full">Bugün</span>}
         </div>
-        {evts.length === 0 ? (
+        {allCount === 0 ? (
           <div className="flex flex-col items-center justify-center py-16 text-center">
             <span className="text-3xl mb-2">📭</span>
             <p className="text-sm text-slate-400">Bu gün görev yok</p>
           </div>
         ) : (
           <div className="space-y-2">
-            {evts.map(e => <TaskCard key={e.task.id + (e.isEnd ? '-e' : '-s')} {...e} />)}
+            {startTasks.map(task   => <TaskCard key={task.id + '-s'} task={task} type="start"   />)}
+            {endTasks.map(task     => <TaskCard key={task.id + '-e'} task={task} type="end"     />)}
+            {ongoingTasks.map(task => <TaskCard key={task.id + '-o'} task={task} type="ongoing" />)}
           </div>
         )}
       </div>
