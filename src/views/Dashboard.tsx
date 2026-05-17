@@ -82,9 +82,10 @@ export default function Dashboard() {
     })
   }, [])
 
-  // Fetch notifications
+  // Fetch notifications + realtime subscription
   useEffect(() => {
     if (!profile) return
+
     supabase
       .from('notifications')
       .select('*')
@@ -92,7 +93,22 @@ export default function Dashboard() {
       .order('created_at', { ascending: false })
       .limit(20)
       .then(({ data }) => { if (data) setNotifications(data) })
-  }, [profile])
+
+    const channel = supabase
+      .channel('user-notifications')
+      .on('postgres_changes', {
+        event: 'INSERT',
+        schema: 'public',
+        table: 'notifications',
+        filter: `user_id=eq.${profile.id}`,
+      }, (payload) => {
+        setNotifications(prev => [payload.new as any, ...prev.slice(0, 19)])
+        toast(`🔔 ${(payload.new as any).text}`, { duration: 4000 })
+      })
+      .subscribe()
+
+    return () => { supabase.removeChannel(channel) }
+  }, [profile?.id])
 
   const selectWs = (id: string) => {
     setActiveWsId(id)
@@ -129,6 +145,19 @@ export default function Dashboard() {
       setTaskModalOpen(true)
     }
   }
+
+  // Bildirim gönderme yardımcısı
+  const sendNotifs = useCallback(async (
+    recipientIds: string[],
+    wsId: string,
+    wsName: string,
+    text: string,
+  ) => {
+    if (!recipientIds.length) return
+    await supabase.from('notifications').insert(
+      recipientIds.map(uid => ({ user_id: uid, workspace_id: wsId, workspace_name: wsName, text }))
+    )
+  }, [])
 
   // Detect changed fields and build activity entries
   const detectChanges = (old: Task, updates: Partial<Task>) => {
@@ -216,6 +245,36 @@ export default function Dashboard() {
       }
       // Sync mirrors
       await syncMirrors(editingTask, data)
+
+      // Bildirimler
+      if (profile) {
+        const taskWs = workspaces.find(w => w.id === editingTask.workspace_id)
+        const wsId   = editingTask.workspace_id
+        const wsName = taskWs?.name || ''
+        const currentAssignees = (data.assignees ?? editingTask.assignees ?? []).map(a => a.id)
+        const others = currentAssignees.filter(id => id !== profile.id)
+
+        for (const entry of changes) {
+          if (entry.action_type === 'field_changed' && entry.field_name === 'status') {
+            await sendNotifs(others, wsId, wsName,
+              `"${editingTask.title}" görevi "${entry.new_value}" durumuna alındı`)
+          } else if (entry.action_type === 'comment_added') {
+            await sendNotifs(others, wsId, wsName,
+              `${profile.full_name}, "${editingTask.title}" görevine yorum ekledi`)
+          } else if (entry.action_type === 'field_changed' && entry.field_name === 'assignees') {
+            const oldIds = (editingTask.assignees ?? []).map(a => a.id)
+            const newlyAdded = (data.assignees ?? [])
+              .map(a => a.id)
+              .filter(id => !oldIds.includes(id) && id !== profile.id)
+            await sendNotifs(newlyAdded, wsId, wsName,
+              `"${editingTask.title}" görevine atandınız`)
+          } else if (entry.action_type === 'field_changed' && entry.field_name === 'priority') {
+            await sendNotifs(others, wsId, wsName,
+              `"${editingTask.title}" görevinin önceliği "${entry.new_value}" olarak güncellendi`)
+          }
+        }
+      }
+
       toast.success('Görev güncellendi')
     } else {
       const created = await createTask(data)
@@ -228,6 +287,13 @@ export default function Dashboard() {
           action_type: 'created',
           field_name: null, old_value: null, new_value: null,
         })
+        // Yeni görev atandı bildirimi
+        const taskWs = workspaces.find(w => w.id === created.workspace_id)
+        const recipients = (created.assignees ?? [])
+          .map(a => a.id)
+          .filter(id => id !== profile.id)
+        await sendNotifs(recipients, created.workspace_id, taskWs?.name || '',
+          `Size yeni bir görev atandı: "${created.title}"`)
       }
       toast.success('Görev eklendi')
     }
