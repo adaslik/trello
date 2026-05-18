@@ -1,7 +1,7 @@
 'use client'
 
 import { useState, useEffect, useCallback } from 'react'
-import { Bell, Plus, Settings, LayoutGrid, BarChart2, Calendar, Home, Users, LogOut, User, Menu, X as XIcon, Shield, Eye, MessageSquare } from 'lucide-react'
+import { Bell, Plus, Settings, LayoutGrid, BarChart2, Calendar, Home, Users, LogOut, User, Menu, X as XIcon, Shield, Eye, MessageSquare, ClipboardList } from 'lucide-react'
 import { useRouter } from 'next/navigation'
 import Sidebar from '@/components/Layout/Sidebar'
 import KanbanBoard from '@/components/Board/KanbanBoard'
@@ -14,6 +14,7 @@ import YKUyeCard from '@/components/Profile/YKUyeCard'
 import JoinRequestCard from '@/components/JoinRequest/JoinRequestCard'
 import ProfileEditModal from '@/components/Profile/ProfileEditModal'
 import MessagingPanel from '@/components/Messaging/MessagingPanel'
+import MeetingsView from '@/components/Meetings/MeetingsView'
 import { useAuth } from '@/hooks/useAuth'
 import { useWorkspaces } from '@/hooks/useWorkspaces'
 import { useTasks } from '@/hooks/useTasks'
@@ -25,7 +26,7 @@ import { WORKSPACE_COLORS, CAT_LABELS, canEditWorkspace, STATUS_LABELS, PRIORITY
 import type { Task, Workspace, Profile } from '@/types'
 import toast from 'react-hot-toast'
 
-type View = 'anasayfa' | 'kanban' | 'gantt' | 'takvim'
+type View = 'anasayfa' | 'kanban' | 'gantt' | 'takvim' | 'toplanti'
 
 export default function Dashboard() {
   const router = useRouter()
@@ -536,6 +537,18 @@ export default function Dashboard() {
                   </button>
                 ))}
               </div>
+
+              {/* Toplantılar — yalnızca YK üyeleri */}
+              {isYK && (
+                <button
+                  onClick={() => setView('toplanti')}
+                  className={`flex items-center gap-1.5 px-3 py-1.5 text-[11px] rounded-lg font-medium transition-colors ${
+                    view === 'toplanti' ? 'bg-indigo-600 text-white' : 'bg-slate-100 text-slate-500 hover:text-slate-700'
+                  }`}
+                >
+                  <ClipboardList size={12} /> Toplantılar
+                </button>
+              )}
             </div>
 
             {effectiveCanEdit && view !== 'anasayfa' && (
@@ -687,6 +700,12 @@ export default function Dashboard() {
               labels={wsLabels}
               wsColor={activeWs?.color || '#534AB7'}
               onTaskClick={task => openTaskModal(task)}
+            />
+          )}
+          {view === 'toplanti' && isYK && (
+            <MeetingsView
+              profiles={members}
+              workspaces={workspaces}
             />
           )}
         </div>
@@ -911,6 +930,19 @@ export default function Dashboard() {
           <MessageSquare size={20} strokeWidth={showChat ? 2.5 : 1.5} />
           Mesajlar
         </button>
+
+        {/* Toplantılar — yalnızca YK üyeleri */}
+        {isYK && (
+          <button
+            onClick={() => setView('toplanti')}
+            className={`flex-1 flex flex-col items-center py-2.5 gap-1 text-[10px] font-medium transition-colors ${
+              view === 'toplanti' ? 'text-indigo-600' : 'text-slate-400'
+            }`}
+          >
+            <ClipboardList size={20} strokeWidth={view === 'toplanti' ? 2.5 : 1.5} />
+            Toplantı
+          </button>
+        )}
       </div>
     </div>
   )

@@ -1,4 +1,4 @@
-import type { Priority, TaskStatus, UserRole } from '@/types'
+import type { Priority, TaskStatus, UserRole, MeetingStatus, AttendanceStatus, AgendaItemStatus } from '@/types'
 
 export const WORKSPACE_COLORS = [
   '#534AB7', '#0F6E56', '#993C1D', '#185FA5',
@@ -109,6 +109,41 @@ export function canEditWorkspace(
   if (isYKMember(userRole)) return true
   return wsAccessRoles.includes(userRole)
 }
+
+// ── Toplantı sabit etiketleri ───────────────────────────────────
+export const MEETING_STATUS_LABELS: Record<MeetingStatus, string> = {
+  taslak:      'Taslak',
+  aktif:       'Aktif',
+  tamamlandi:  'Tamamlandı',
+}
+
+export const MEETING_STATUS_COLORS: Record<MeetingStatus, { bg: string; text: string }> = {
+  taslak:     { bg: '#F1F5F9', text: '#64748B' },
+  aktif:      { bg: '#DCFCE7', text: '#166534' },
+  tamamlandi: { bg: '#EDE9FE', text: '#5B21B6' },
+}
+
+export const ATTENDANCE_STATUS_LABELS: Record<AttendanceStatus, string> = {
+  katildi:    'Katıldı',
+  katilmadi:  'Katılmadı',
+  mazeretli:  'Mazeretli',
+  gecikti:    'Geç Kaldı',
+}
+
+export const ATTENDANCE_STATUS_COLORS: Record<AttendanceStatus, string> = {
+  katildi:   'bg-green-100 text-green-700 hover:bg-green-200',
+  katilmadi: 'bg-red-100 text-red-600 hover:bg-red-200',
+  mazeretli: 'bg-yellow-100 text-yellow-700 hover:bg-yellow-200',
+  gecikti:   'bg-orange-100 text-orange-700 hover:bg-orange-200',
+}
+
+export const AGENDA_STATUS_LABELS: Record<AgendaItemStatus, string> = {
+  bekleyen:   'Bekliyor',
+  tamamlandi: 'Tamamlandı',
+  ertelendi:  'Ertelendi',
+}
+
+export const ATTENDANCE_CYCLE: AttendanceStatus[] = ['katildi', 'mazeretli', 'gecikti', 'katilmadi']
 
 // Cover SVG patterns
 export const COVER_PATTERNS = [

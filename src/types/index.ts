@@ -145,6 +145,55 @@ export interface Message {
   created_at: string
 }
 
+// ── Toplantı modülü ────────────────────────────────────────────
+export type MeetingStatus    = 'taslak' | 'aktif' | 'tamamlandi'
+export type AttendanceStatus = 'katildi' | 'katilmadi' | 'mazeretli' | 'gecikti'
+export type AgendaItemStatus = 'bekleyen' | 'tamamlandi' | 'ertelendi'
+
+export interface Meeting {
+  id: string
+  meeting_number: number
+  title: string
+  date: string
+  start_time: string | null
+  end_time: string | null
+  location: string
+  status: MeetingStatus
+  decision_text: string | null
+  created_by: string | null
+  created_at: string
+}
+
+export interface MeetingAttendance {
+  id: string
+  meeting_id: string
+  profile_id: string
+  status: AttendanceStatus
+  notes: string | null
+  updated_at: string
+  profile?: Pick<Profile, 'id' | 'full_name' | 'initials' | 'role'>
+}
+
+export interface MeetingAgendaItem {
+  id: string
+  meeting_id: string
+  order_num: number
+  title: string
+  notes: string | null
+  is_fixed: boolean
+  status: AgendaItemStatus
+  created_at: string
+}
+
+export interface MeetingTaskLink {
+  meeting_id: string
+  task_id: string
+  agenda_item_id: string | null
+  created_at: string
+  task: Task
+}
+
+// ── Üyelik ─────────────────────────────────────────────────────
 export type MembershipRole = 'admin' | 'observer'
 
 export interface WorkspaceMembership {
