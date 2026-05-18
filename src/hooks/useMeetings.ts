@@ -172,7 +172,7 @@ export function useMeetings() {
         comments: [],
         label_ids: [],
         cover_pattern: 0,
-        position: Date.now(),
+        position: 0,
         created_by: user.id,
       })
       .select()
