@@ -46,7 +46,8 @@ CREATE POLICY "meetings_update" ON public.meetings FOR UPDATE TO authenticated
 
 CREATE POLICY "meetings_delete" ON public.meetings FOR DELETE TO authenticated
   USING (
-    (SELECT role FROM public.profiles WHERE id = auth.uid()) = 'yk_baskani'
+    (SELECT role FROM public.profiles WHERE id = auth.uid())
+      IN ('yk_baskani','yk_it_sorumlusu')
   );
 
 -- ── Yoklama ───────────────────────────────────────────────────────
