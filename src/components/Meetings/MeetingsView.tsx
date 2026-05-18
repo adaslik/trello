@@ -5,6 +5,7 @@ import {
   ArrowLeft, Plus, ChevronDown, ChevronRight, ClipboardList,
   Users, Calendar, MapPin, Clock, Check, FileText, Pencil, X,
 } from 'lucide-react'
+import RichTextEditor from './RichTextEditor'
 import { useMeetings } from '@/hooks/useMeetings'
 import { useAuth } from '@/hooks/useAuth'
 import {
@@ -524,27 +525,25 @@ export default function MeetingsView({ profiles, workspaces }: Props) {
       </section>
 
       {/* ── KARAR METNİ ─────────────────────────────────────────── */}
-      <section className="bg-white border border-slate-200 rounded-xl p-4">
-        <div className="flex items-center gap-2 mb-3">
-          <FileText size={14} className="text-indigo-500" />
-          <span className="text-sm font-semibold text-slate-700">Karar Metni</span>
-        </div>
-        <textarea
-          value={decisionText}
-          onChange={e => setDecisionText(e.target.value)}
-          placeholder="Toplantı kararlarını buraya yazın…"
-          rows={8}
-          className="w-full text-sm text-slate-700 border border-slate-200 rounded-lg px-3 py-2 resize-none focus:outline-none focus:ring-2 focus:ring-indigo-300 font-mono"
-        />
-        <div className="flex justify-end mt-3">
+      <section className="border border-slate-200 rounded-xl overflow-hidden">
+        <div className="flex items-center justify-between px-4 py-3 bg-white border-b border-slate-100">
+          <div className="flex items-center gap-2">
+            <FileText size={14} className="text-indigo-500" />
+            <span className="text-sm font-semibold text-slate-700">Karar Metni</span>
+          </div>
           <button
             onClick={handleSaveDecision}
             disabled={savingDecision}
-            className="flex items-center gap-1.5 px-4 py-2 bg-indigo-600 text-white text-xs font-medium rounded-lg hover:bg-indigo-700 disabled:opacity-60"
+            className="flex items-center gap-1.5 px-3 py-1.5 bg-indigo-600 text-white text-xs font-medium rounded-lg hover:bg-indigo-700 disabled:opacity-60"
           >
             <Check size={12} /> {savingDecision ? 'Kaydediliyor…' : 'Kaydet'}
           </button>
         </div>
+        <RichTextEditor
+          content={decisionText}
+          onChange={setDecisionText}
+          placeholder="Toplantı kararlarını buraya yazın…"
+        />
       </section>
     </div>
   )
