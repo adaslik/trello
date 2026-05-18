@@ -35,13 +35,13 @@ CREATE POLICY "meetings_select" ON public.meetings FOR SELECT TO authenticated
 CREATE POLICY "meetings_insert" ON public.meetings FOR INSERT TO authenticated
   WITH CHECK (
     (SELECT role FROM public.profiles WHERE id = auth.uid())
-      IN ('yk_baskani','yk_baskan_vekili','yk_sekreteri')
+      IN ('yk_baskani','yk_baskan_vekili','yk_sekreteri','yk_it_sorumlusu')
   );
 
 CREATE POLICY "meetings_update" ON public.meetings FOR UPDATE TO authenticated
   USING (
     (SELECT role FROM public.profiles WHERE id = auth.uid())
-      IN ('yk_baskani','yk_baskan_vekili','yk_sekreteri')
+      IN ('yk_baskani','yk_baskan_vekili','yk_sekreteri','yk_it_sorumlusu')
   );
 
 CREATE POLICY "meetings_delete" ON public.meetings FOR DELETE TO authenticated
